@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children }) => {
   const userData = localStorage.getItem('userData');
   
   if (!userData) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/admin" replace/>;
   }
 
   try {
