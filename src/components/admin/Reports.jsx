@@ -17,6 +17,13 @@ const Reports = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Hardcoded attendance data for existing tutors
+  const hardcodedTutors = [
+    { tutor: { _id: '1', name: 'Abdul Rahman' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': false, '2025-06-03': true } },
+    { tutor: { _id: '2', name: 'wakeel' }, center: { name: 'Masjid-e-Miskeen' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': false } },
+    // Add more hardcoded data as needed
+  ];
+
   // Fetch centers
   useEffect(() => {
     const fetchCenters = async () => {
@@ -39,38 +46,11 @@ const Reports = () => {
     fetchCenters()
   }, [])
 
-  // Fetch attendance data when date or center changes
+  // Use hardcoded data instead of fetching from server
   useEffect(() => {
-    const fetchAttendanceData = async () => {
-      setLoading(true)
-      try {
-        const month = selectedDate.getMonth() + 1
-        const year = selectedDate.getFullYear()
-        const centerId = selectedCenter || ''
-        
-        const response = await fetch(
-          `https://mtc-backend-jn5y.onrender.com/api/attendance/report?month=${month}&year=${year}&centerId=${centerId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
-            }
-          }
-        )
-        
-        const data = await response.json()
-        if (response.ok) {
-          setTutors(data)
-        } else {
-          throw new Error(data.message || 'Failed to fetch attendance data')
-        }
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchAttendanceData()
-  }, [selectedDate, selectedCenter])
+    setTutors(hardcodedTutors);
+    setLoading(false);
+  }, []);
 
   const handleExportCSV = () => {
     const monthDays = eachDayOfInterval({
@@ -208,6 +188,14 @@ const Reports = () => {
     }
   }
 
+  // Debug component to display data in the DOM
+  const DebugInfo = () => (
+    <div style={{ padding: '10px', backgroundColor: '#f0f0f0', margin: '10px 0' }}>
+      <h3>Debug Info</h3>
+      <pre>{JSON.stringify(tutors, null, 2)}</pre>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -227,6 +215,7 @@ const Reports = () => {
 
   return (
     <div className="space-y-6">
+      <DebugInfo />
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Attendance Reports

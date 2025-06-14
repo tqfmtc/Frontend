@@ -7,6 +7,14 @@ export default function useTodayAttendance() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Temporary fake attendance data for demo purposes
+  const fakeAttendanceData = [
+    { date: '2025-06-14', tutor: { _id: 'tutor1' }, status: 'Present' },
+    { date: '2025-06-13', tutor: { _id: 'tutor2' }, status: 'Absent' },
+    { date: '2025-06-12', tutor: { _id: 'tutor3' }, status: 'Absent' },
+    { date: '2025-06-15', tutor: { _id: 'tutor1' }, status: 'Present' },
+  ];
+
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('userData') || '{}');
     const token = userData.token;
@@ -17,32 +25,13 @@ export default function useTodayAttendance() {
       return;
     }
     const today = format(new Date(), 'yyyy-MM-dd');
-    fetch(`https://mtc-backend-jn5y.onrender.com/api/attendance/recent`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(async res => {
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            throw new Error('Not authorized. Please login again.');
-          } else {
-            throw new Error(`Failed to fetch attendance: ${res.status}`);
-          }
-        }
-        return res.json();
-      })
-      .then(records => {
-        // Debug: log records
-        // console.log('Attendance records:', records);
-        const found = records.some(
-          r => r.tutor && (r.tutor._id === tutorId) && format(new Date(r.date || r.createdAt), 'yyyy-MM-dd') === today
-        );
-        setAlreadyMarked(found);
-        setLoading(false);
-      })
-      .catch(e => {
-        setError(e.message);
-        setLoading(false);
-      });
+
+    // Use fake data instead of fetching from server
+    const found = fakeAttendanceData.some(
+      r => r.tutor && (r.tutor._id === tutorId) && r.date === today
+    );
+    setAlreadyMarked(found);
+    setLoading(false);
   }, []);
 
   return { alreadyMarked, loading, error };

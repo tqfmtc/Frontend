@@ -14,11 +14,30 @@ const ReportManagement = () => {
   const [selectedCenter, setSelectedCenter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [attendanceReport, setAttendanceReport] = useState([]);
 
   const { response: centers } = useGet('/centers');
-  const { response: attendanceReport, loading, error: reportError } = useGet(
-    `/attendance/report?month=${selectedMonth}&year=${selectedYear}${selectedCenter ? `&centerId=${selectedCenter}` : ''}`
-  );
+
+  // Extended hardcoded attendance data with present days until today
+  const hardcodedAttendanceReport = [
+    { tutor: { _id: '1', name: 'Abdul Rahman' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': false, '2025-06-13': true, '2025-06-14': false} },
+    { tutor: { _id: '2', name: 'wakeel' }, center: { name: 'Masjid-e-Miskeen' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': true } },
+    { tutor: { _id: '3', name: 'salman' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': false, '2025-06-13': false, '2025-06-14': false } },
+    { tutor: { _id: '4', name: 'Safi' }, center: { name: 'masjid-e-muhammedia' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': false} },
+    { tutor: { _id: '5', name: 'Syed Samad' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': false } },
+    { tutor: { _id: '6', name: 'zain' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': true } },
+    { tutor: { _id: '7', name: 'Md Adil khan' }, center: { name: 'Masjid-e-Hanzala' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': true } },
+    { tutor: { _id: '8', name: 'Syed Farhan Quadri' }, center: { name: 'Masjid-e-Miskeen' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': false } },
+    { tutor: { _id: '9', name: 'syedhussain' }, center: { name: 'masjid-e-muhammedia' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': true } },
+    { tutor: { _id: '10', name: 'mustafa' }, center: { name: 'masjid-e-noor' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': false, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': true } },
+    { tutor: { _id: '11', name: 'Mohd Mustafa' }, center: { name: 'Masjid-e-Miskeen' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': false, '2025-06-14': false } },
+    { tutor: { _id: '12', name: 'altaf' }, center: { name: 'TDC' }, attendance: { '2025-06-01': true, '2025-06-02': true, '2025-06-03': true, '2025-06-04': true, '2025-06-05': true, '2025-06-06': true, '2025-06-07': true, '2025-06-08': true, '2025-06-09': true, '2025-06-10': true, '2025-06-11': true, '2025-06-12': true, '2025-06-13': true, '2025-06-14': false } },
+  ];
+
+  // Use hardcoded data instead of fetching from server
+  useEffect(() => {
+    setAttendanceReport(hardcodedAttendanceReport);
+  }, []);
 
   const handleDownload = async () => {
     try {
@@ -182,7 +201,7 @@ const ReportManagement = () => {
     doc.save(`attendance_report_${format(new Date(), 'MMM_yyyy')}.pdf`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -191,7 +210,7 @@ const ReportManagement = () => {
     );
   }
 
-  if (reportError) {
+  if (error) {
     return (
       <div className="bg-red-50 border-l-4 border-red-400 p-4">
         <div className="flex">
@@ -201,7 +220,7 @@ const ReportManagement = () => {
             </svg>
           </div>
           <div className="ml-3">
-            <p className="text-sm text-red-700">{reportError}</p>
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         </div>
       </div>
