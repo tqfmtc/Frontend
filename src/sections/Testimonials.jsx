@@ -35,6 +35,14 @@ const Testimonials = () => {
     },
   ];
 
+    // Preload all testimonial images on mount
+    useEffect(() => {
+      testimonials.forEach((testimonial) => {
+        const img = new window.Image();
+        img.src = testimonial.image;
+      });
+    }, []);
+  
   useEffect(() => {
     if (!inView) return;
 
