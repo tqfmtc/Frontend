@@ -27,6 +27,17 @@ const TutorManagement = () => {
     setMode('add');
   };
 
+  // Password validation helper
+  function isValidPassword(password) {
+    // No whitespace, no single/double quotes, at least 8 characters
+    const forbiddenChars = /['"\s]/;
+    return (
+      typeof password === 'string' &&
+      password.length >= 8 &&
+      !forbiddenChars.test(password)
+    );
+  }
+
   // Handle Add Tutor API
   const handleAddTutor = async (formData) => {
     setIsSubmitting(true);
@@ -63,6 +74,16 @@ const TutorManagement = () => {
       });
       
       console.log('Sending JSON data to API:', jsonData);
+      
+      // Password validation
+      if ('password' in formData && !isValidPassword(formData.password)) {
+        setErrorMessage(
+          'Password must be at least 8 characters, contain no spaces, and not include quotes (\" or \\\').'
+        );
+        setShowErrorPopover(true);
+        setIsSubmitting(false);
+        return;
+      }
       
       try {
         // POST to backend using axios instance
@@ -232,6 +253,16 @@ const TutorManagement = () => {
       });
       
       console.log('Sending JSON data to API for update:', jsonData);
+      
+      // Password validation
+      if ('password' in updatedData && updatedData.password && !isValidPassword(updatedData.password)) {
+        setErrorMessage(
+            'Password must be at least 8 characters, contain no spaces, and not include quotes (" or \').'
+          );
+        setShowErrorPopover(true);
+        setIsSubmitting(false);
+        return;
+      }
       
       // PUT to backend using axios instance
       const response = await API.put(`/tutors/${selectedTutor._id}`, jsonData, {
