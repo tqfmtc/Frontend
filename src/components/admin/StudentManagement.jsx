@@ -68,7 +68,7 @@ const StudentManagement = () => {
           'Aadhar Number': student.aadharNumber || '',
           'Assigned Center': centerName,
           'Remarks': student.remarks || '',
-          'Created Date': student.createdAt ? new Date(student.createdAt).toLocaleString() : ''
+          'Created Date': student.createdAt ? new Date(student.createdAt).toLocaleString('en-GB') : ''
         };
       });
       
@@ -161,8 +161,8 @@ const StudentManagement = () => {
       }
 
       const url = editingStudent 
-        ? `https://mtc-backend-jn5y.onrender.com/api/students/${editingStudent._id}`
-        : 'https://mtc-backend-jn5y.onrender.com/api/students';
+        ? `${process.env.REACT_APP_API_URL}/api/students/${editingStudent._id}`
+        : `${process.env.REACT_APP_API_URL}/api/students`;
 
       const response = await fetch(url, {
         method: editingStudent ? 'PUT' : 'POST',
@@ -211,7 +211,7 @@ const StudentManagement = () => {
         return;
       }
 
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/students/${studentToDelete._id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/students/${studentToDelete._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -364,7 +364,7 @@ const StudentManagement = () => {
               {/* Registration Date */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 flex items-center"><FiCalendar className="mr-1" /> Registration Date</p>
-                <p className="font-medium">{student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'Unknown'}</p>
+                <p className="font-medium">{student.createdAt ? new Date(student.createdAt).toLocaleDateString('en-GB') : 'Unknown'}</p>
               </div>
               
               {/* Remarks */}

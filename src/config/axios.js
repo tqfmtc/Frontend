@@ -1,14 +1,14 @@
 import axios from 'axios';
 
-const API = axios.create({
-  baseURL: 'https://mtc-backend-jn5y.onrender.com/api',
+const instance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
-    'Content-Type': 'application/json',
-  },
+    'Content-Type': 'application/json'
+  }
 });
 
 // Add a request interceptor for authentication
-API.interceptors.request.use(
+instance.interceptors.request.use(
   (config) => {
     // Get token from userData object
     const userDataStr = localStorage.getItem('userData');
@@ -35,7 +35,7 @@ API.interceptors.request.use(
 );
 
 // Add a response interceptor to handle authentication errors
-API.interceptors.response.use(
+instance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
@@ -54,4 +54,4 @@ API.interceptors.response.use(
   }
 );
 
-export default API;
+export default instance;

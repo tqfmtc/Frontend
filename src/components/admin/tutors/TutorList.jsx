@@ -7,6 +7,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [filteredTutors, setFilteredTutors] = useState([]);
   
   // Popover states
@@ -19,26 +20,31 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
     fetchTutors();
   }, []);
 
-  // Filter tutors when search term or tutors list changes
+  // Filter tutors when search term, status filter, or tutors list changes
   useEffect(() => {
     if (!tutors) return;
     
-    if (!searchTerm.trim()) {
-      setFilteredTutors(tutors);
-      return;
+    let filtered = [...tutors];
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(tutor => tutor.status === statusFilter);
     }
     
-    const term = searchTerm.toLowerCase().trim();
-    const filtered = tutors.filter(tutor => 
-      (tutor.name && tutor.name.toLowerCase().includes(term)) ||
-      (tutor.email && tutor.email.toLowerCase().includes(term)) ||
-      (tutor.phone && tutor.phone.includes(term)) ||
-      (tutor.assignedCenter && tutor.assignedCenter.name && 
-        tutor.assignedCenter.name.toLowerCase().includes(term))
-    );
+    // Apply search term filter if exists
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(tutor => 
+        (tutor.name && tutor.name.toLowerCase().includes(term)) ||
+        (tutor.email && tutor.email.toLowerCase().includes(term)) ||
+        (tutor.phone && tutor.phone.includes(term)) ||
+        (tutor.assignedCenter && tutor.assignedCenter.name && 
+          tutor.assignedCenter.name.toLowerCase().includes(term))
+      );
+    }
     
     setFilteredTutors(filtered);
-  }, [searchTerm, tutors]);
+  }, [searchTerm, statusFilter, tutors]);
 
   // Fetch tutors from API
   const fetchTutors = async () => {
@@ -189,36 +195,63 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
       
       {/* Search and Filters */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ position: 'relative' }}>
-          <input 
-            type="text" 
-            placeholder="Search tutors by name, email, phone or center..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '12px 16px 12px 40px', 
-              borderRadius: '8px', 
-              border: '1px solid #e5e7eb',
-              fontSize: '14px',
-              boxSizing: 'border-box'
-            }} 
-          />
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="#9ca3af" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              type="text"
+              placeholder="Search tutors..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 16px 10px 40px',
+                borderRadius: '8px', 
+                border: '1px solid #e5e7eb',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }} 
+            />
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="20" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#9ca3af" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div style={{ minWidth: '180px' }}>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                height: '40px',
+                appearance: 'none',
+                backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,<svg width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M6 9L12 15L18 9\' stroke=\'%236B7280\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/></svg>")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 10px center',
+                paddingRight: '36px'
+              }}
+            >
+              <option value="all">All Tutors</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+          </div>
         </div>
       </div>
       
@@ -232,6 +265,8 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Email</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Center</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Actions</th>
+              <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Status</th>
+
             </tr>
           </thead>
           <tbody>
@@ -243,7 +278,15 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
               </tr>
             ) : (
               filteredTutors.map((tutor) => (
-                <tr key={tutor._id} style={{ borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s' }}>
+                <tr 
+                  key={tutor._id} 
+                  style={{ 
+                    borderBottom: '1px solid #e5e7eb', 
+                    transition: 'all 0.2s ease',
+                    backgroundColor: tutor.status === 'inactive' ? '#f3f4f6' : 'white',
+                    opacity: 1
+                  }}
+                >
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ fontWeight: '500', color: '#111827' }}>{tutor.name}</div>
                   </td>
@@ -312,21 +355,24 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => confirmDeleteTutor(tutor)}
+                        onClick={() => tutor.status !== 'inactive' && confirmDeleteTutor(tutor)}
+                        disabled={tutor.status === 'inactive'}
                         style={{ 
                           padding: '6px 12px', 
-                          background: '#fee2e2', 
-                          color: '#b91c1c', 
+                          background: tutor.status === 'inactive' ? '#e5e7eb' : '#fee2e2', 
+                          color: tutor.status === 'inactive' ? '#9ca3af' : '#b91c1c', 
                           border: 'none', 
                           borderRadius: '6px', 
-                          cursor: 'pointer',
+                          cursor: tutor.status === 'inactive' ? 'not-allowed' : 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '4px',
                           fontWeight: '500',
                           fontSize: '13px',
-                          transition: 'all 0.2s'
+                          transition: 'all 0.2s',
+                          opacity: tutor.status === 'inactive' ? 0.7 : 1
                         }}
+                        title={tutor.status === 'inactive' ? 'Cannot delete an inactive tutor' : 'Delete tutor'}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"></polyline>
@@ -338,6 +384,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                       </button>
                     </div>
                   </td>
+                  <td style={{ padding: '14px 16px', color: tutor.status ==="inactive"?"red":"green"}}>{tutor.status==="inactive"?"Inactive":"Active"}</td>
                 </tr>
               ))
             )}

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
-import { FiBookOpen, FiUsers, FiAward, FiHome } from 'react-icons/fi'
+import { FiBookOpen, FiUsers, FiAward, FiHome, FiClipboard, FiEdit, FiActivity, FiMap } from 'react-icons/fi'
 import { assets } from '../assets/assets'
 
 
@@ -39,6 +39,30 @@ const Programs = () => {
       title: "Community Centers",
       description: "Safe learning spaces within slum areas that provide educational resources and support.",
       color: "bg-emerald-100 text-emerald-600"
+    },
+    {
+      icon: <FiClipboard size={24} />,
+      title: "Review Meetings",
+      description: "Regular review meetings to monitor student progress, address challenges, and celebrate achievements.",
+      color: "bg-indigo-100 text-indigo-600"
+    },
+    {
+      icon: <FiEdit size={24} />,
+      title: "Test Quizzes",
+      description: "Frequent quizzes and assessments to evaluate understanding and tailor instruction.",
+      color: "bg-rose-100 text-rose-600"
+    },
+    {
+      icon: <FiActivity size={24} />,
+      title: "Sports Activities",
+      description: "Organized sports and games promoting physical health, teamwork, and confidence.",
+      color: "bg-orange-100 text-orange-600"
+    },
+    {
+      icon: <FiMap size={24} />,
+      title: "Excursions",
+      description: "Educational excursions and field trips that broaden horizons through experiential learning.",
+      color: "bg-teal-100 text-teal-600"
     }
   ]
 

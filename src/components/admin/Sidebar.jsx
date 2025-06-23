@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus } from 'react-icons/fi'
+import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiUserCheck, FiDollarSign } from 'react-icons/fi'
 import { BiRupee } from 'react-icons/bi' // Importing rupee sign icon
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -45,11 +45,14 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiHome },
     { id: 'tutors', label: 'Tutors', icon: FiUsers },
-    { id: 'hadiya', label: 'Hadiya Mgmt', icon: BiRupee }, // Using rupee icon for Hadiya
+    { id: 'hadiya', label: 'Hadiya', icon: FiDollarSign },
+    { id: 'guest-tutors', label: 'Guest Tutors', icon: FiUserPlus },
+    { id: 'announcements', label: 'Announcements', icon: FiFileText },
     { id: 'centers', label: 'Centers', icon: FiMapPin },
     { id: 'reports', label: 'Reports', icon: FiFileText },
     { id: 'students', label: 'Students', icon: FiUser },
-    { id: 'admins', label: 'Admins', icon: FiUserPlus }
+    { id: 'admins', label: 'Admins', icon: FiUserPlus },
+    { id: 'supervisors', label: 'Supervisors', icon: FiUserCheck }
   ];
 
   if (isLoading) {
@@ -90,7 +93,7 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
           {tabs.map((tab) => (
             <li key={tab.id}>
               <button
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'

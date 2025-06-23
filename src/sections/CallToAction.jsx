@@ -74,7 +74,7 @@ const CallToAction = () => {
       formDataToSend.append('resume', formData.resume)
       
       // Send application data to backend
-      const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/tutor-applications', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/tutor-applications`, {
         method: 'POST',
         body: formDataToSend
       })
@@ -113,7 +113,7 @@ const CallToAction = () => {
     
     try {
       // Send contact form data to backend
-      const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/contact', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/contact`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

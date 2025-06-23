@@ -131,11 +131,11 @@ const TutorOverview = () => {
           throw new Error('Authentication token not found')
         }
 
-        const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/tutors/attendance', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/tutors/attendance`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             currentLocation: [currentLocation.lat, currentLocation.lng]

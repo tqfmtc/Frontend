@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiX, FiMapPin, FiAlertTriangle, FiFilter } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiX, FiMapPin, FiAlertTriangle, FiFilter, FiUsers, FiMessageSquare, FiStar, FiDownload } from 'react-icons/fi';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import useGet from '../CustomHooks/useGet';
 import { reverseGeocode } from './utils/reverseGeocode';
 import { toast } from 'react-hot-toast';
 import { useCenterRefetch } from '../../context/CenterRefetchContext';
+import Papa from 'papaparse';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,7 +38,8 @@ const CenterManagement = () => {
     centerName: '',
     area: '',
     sadarName: '',
-    tutorName: ''
+    tutorName: '',
+    status: 'active' // 'active', 'inactive', 'all'
   });
   const [formData, setFormData] = useState({
     name: '',
@@ -58,6 +60,7 @@ const CenterManagement = () => {
 
   // Get centers data with our fixed useGet hook
   const { response: centers, error, loading, refetch } = useGet("/Centers");
+  const { response: comments, loading: commentsLoading } = useGet("/centers/comments");
   const refetchContext = useCenterRefetch();
 
   useEffect(() => {
@@ -155,9 +158,9 @@ const CenterManagement = () => {
       // Define URL based on whether we're editing or creating
       let url;
       if (editingCenter) {
-        url = `https://mtc-backend-jn5y.onrender.com/api/centers/${editingCenter._id}`;
+        url = `${import.meta.env.VITE_API_URL}/centers/${editingCenter._id}`;
       } else {
-        url = 'https://mtc-backend-jn5y.onrender.com/api/centers';
+        url = `${import.meta.env.VITE_API_URL}/centers`;
       }
 
       const response = await fetch(url, {
@@ -209,10 +212,11 @@ const CenterManagement = () => {
       if (!token) {
         throw new Error('No token found in local storage');
       }
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/centers/${deletingCenter._id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/centers/${deletingCenter._id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -242,29 +246,21 @@ const CenterManagement = () => {
   if (error) return <p>Error loading centers: {error}</p>;
   if (!centers) return <p>No centers found.</p>;
 
-  const filteredCenters = centers.filter(center => {
-    // If all filters are empty, show all centers
-    if (!filters.centerName && !filters.area && !filters.sadarName && !filters.tutorName) {
-      return true;
-    }
+  const filteredCenters = centers?.filter(center => {
+    const matchesName = center.name?.toLowerCase().includes(filters.centerName.toLowerCase());
+    const matchesArea = center.area?.toLowerCase().includes(filters.area.toLowerCase());
+    const matchesSadar = center.sadarName?.toLowerCase().includes(filters.sadarName.toLowerCase());
+    const matchesTutor = center.tutors?.some(tutor => 
+      tutor.name?.toLowerCase().includes(filters.tutorName.toLowerCase())
+    );
+    const matchesStatus = filters.status === 'all' || 
+                         (filters.status === 'active' && center.status !== 'inactive') || 
+                         (filters.status === 'inactive' && center.status === 'inactive');
 
-    // Check each filter only if it has a value
-    const matchesCenterName = !filters.centerName || 
-      center.name?.toLowerCase().includes(filters.centerName.toLowerCase());
-    
-    const matchesArea = !filters.area || 
-      center.area?.toLowerCase().includes(filters.area.toLowerCase());
-    
-    const matchesSadarName = !filters.sadarName || 
-      center.sadarName?.toLowerCase().includes(filters.sadarName.toLowerCase());
-    
-    const matchesTutorName = !filters.tutorName || 
-      center.tutors?.some(tutor => 
-        tutor.name?.toLowerCase().includes(filters.tutorName.toLowerCase())
-      );
-
-    return matchesCenterName && matchesArea && matchesSadarName && matchesTutorName;
-  });
+    return matchesName && matchesArea && matchesSadar && 
+           (filters.tutorName === '' || matchesTutor) &&
+           matchesStatus;
+  }) || [];
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -274,18 +270,62 @@ const CenterManagement = () => {
     }));
   };
 
+  const downloadCommentsReport = () => {
+    if (!comments || comments.length === 0) {
+      toast.error('No comments data available to download');
+      return;
+    }
+
+    // Prepare data for CSV
+    const csvData = comments.map(comment => ({
+      'Center Name': comment.center?.name || 'N/A',
+      'Center Area': comment.center?.area || 'N/A',
+      'Supervisor Name': comment.supervisor?.name || 'N/A',
+      'Supervisor Email': comment.supervisor?.email || 'N/A',
+      'Rating': comment.rating,
+      'Comment': comment.text,
+      'Date':new Intl.DateTimeFormat('en-GB').format(new Date(comment.createdAt))
+    }));
+    console.log(csvData);
+    // Convert to CSV
+    const csv = Papa.unparse(csvData);
+    
+    // Create and download file
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `center_comments_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Comments report downloaded successfully!');
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Center Management
         </h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
-        >
-          Add New Center
-        </button>
+        <div className="flex space-x-4">
+          <button
+            onClick={downloadCommentsReport}
+            disabled={commentsLoading || !comments || comments.length === 0}
+            className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-700 hover:to-green-600 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            <FiDownload className="mr-2" />
+            Download Centers Report
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+          >
+            Add New Center
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}
@@ -452,75 +492,68 @@ const CenterManagement = () => {
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Centers</h2>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              <FiFilter className="text-gray-600" />
-              <span className="text-sm font-medium">Filters</span>
-            </button>
-          </div>
         </div>
 
-        {/* Filter Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
+        {/* Filter Panel - Always Visible */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Center Name</label>
+            <input
+              type="text"
+              name="centerName"
+              value={filters.centerName}
+              onChange={handleFilterChange}
+              placeholder="Search center name..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+            <input
+              type="text"
+              name="area"
+              value={filters.area}
+              onChange={handleFilterChange}
+              placeholder="Search area..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sadar Name</label>
+            <input
+              type="text"
+              name="sadarName"
+              value={filters.sadarName}
+              onChange={handleFilterChange}
+              placeholder="Search sadar name..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tutor Name</label>
+            <input
+              type="text"
+              name="tutorName"
+              value={filters.tutorName}
+              onChange={handleFilterChange}
+              placeholder="Search tutor name..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Center Name</label>
-                  <input
-                    type="text"
-                    name="centerName"
-                    value={filters.centerName}
-                    onChange={handleFilterChange}
-                    placeholder="Search center name..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
-                  <input
-                    type="text"
-                    name="area"
-                    value={filters.area}
-                    onChange={handleFilterChange}
-                    placeholder="Search area..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sadar Name</label>
-                  <input
-                    type="text"
-                    name="sadarName"
-                    value={filters.sadarName}
-                    onChange={handleFilterChange}
-                    placeholder="Search sadar name..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tutor Name</label>
-                  <input
-                    type="text"
-                    name="tutorName"
-                    value={filters.tutorName}
-                    onChange={handleFilterChange}
-                    placeholder="Search tutor name..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -545,59 +578,78 @@ const CenterManagement = () => {
                   Students
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCenters.map((center) => (
-                <tr
-                  key={center._id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => setShowDetails(center)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{center.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{center.area}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{center.sadarName}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{center.sadarContact}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{center.tutors?.length || 0}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{center.students?.length || 0}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(center);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <FiEdit2 size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(center);
-                        }}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredCenters.map((center) => {
+                const isInactive = center.status === 'inactive';
+                return (
+                  <tr
+                    key={center._id}
+                    className={`transition-all duration-200 cursor-pointer ${
+                      isInactive 
+                        ? 'bg-gray-100 hover:bg-gray-200' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => setShowDetails(center)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{center.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{center.area}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{center.sadarName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{center.sadarContact}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{center.tutors?.length || 0}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{center.students?.length || 0}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        center.status === 'inactive' 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {center.status === 'inactive' ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(center);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <FiEdit2 size={18} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(center);
+                          }}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -671,6 +723,72 @@ const CenterManagement = () => {
                     <p className="font-medium">{showDetails.students?.length || 0}</p>
                   </div>
                 </div>
+
+                {/* Ratings Section */}
+                {comments && comments.length > 0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-3">Supervisor Ratings</p>
+                    {(() => {
+                      console.log('All comments:', comments);
+                      console.log('Current center ID:', showDetails._id);
+                      
+                      const centerComments = comments.filter(comment => {
+                        console.log('Comment center ID:', comment.center?._id || comment.center);
+                        return comment.center?._id === showDetails._id || comment.center === showDetails._id;
+                      });
+                      
+                      console.log('Filtered center comments:', centerComments);
+                      
+                      if (centerComments.length === 0) {
+                        return <p className="text-sm text-gray-500">No ratings available for this center.</p>;
+                      }
+                      
+                      const latestRatings = centerComments.reduce((acc, comment) => {
+                        const existingIndex = acc.findIndex(item => 
+                          item.supervisor?._id === comment.supervisor?._id || 
+                          item.supervisor === comment.supervisor
+                        );
+                        if (existingIndex === -1) {
+                          acc.push(comment);
+                        } else if (new Date(comment.createdAt) > new Date(acc[existingIndex].createdAt)) {
+                          acc[existingIndex] = comment;
+                        }
+                        return acc;
+                      }, []);
+                      
+                      console.log('Latest ratings:', latestRatings);
+                      
+                      return (
+                        <div className="space-y-2">
+                          {latestRatings.map((comment, index) => (
+                            <div key={index} className="grid grid-cols-3 items-center py-2 border-b border-gray-200 last:border-b-0">
+                              <span className="text-sm font-medium text-gray-900">
+                                {comment.supervisor?.name || comment.supervisor || 'Unknown Supervisor'}
+                              </span>
+                              <div className="flex justify-center items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <FiStar
+                                    key={star}
+                                    size={16}
+                                    className={
+                                      star <= comment.rating
+                                        ? 'text-yellow-400 fill-yellow-400'
+                                        : 'text-gray-300'
+                                    }
+                                    fill={star <= comment.rating ? '#facc15' : 'none'}
+                                  />
+                                ))}
+                              </div>
+                              <div className="flex justify-end">
+                                <span className='text-sm text-gray-500'>{new Intl.DateTimeFormat('en-GB').format(new Date(comment.createdAt))}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {showDetails.coordinates && (
                   <div className="bg-gray-50 p-4 rounded-lg">

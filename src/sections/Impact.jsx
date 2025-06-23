@@ -23,9 +23,9 @@ const Impact = () => {
   };
 
   const stats = [
-    { value: "1,000+", label: "Students Reached", description: "Children from slum areas who received educational support" },
-    { value: "50+", label: "Mohalla Centers", description: "Local tuition centers established in underprivileged areas" },
-    { value: "200+", label: "Tutors Trained", description: "Dedicated mentors empowering the next generation" },
+    { value: "3,000+", label: "Students Reached", description: "Children from slum areas who received educational support" },
+    { value: "70+", label: "Mohalla Centers", description: "Local tuition centers established in underprivileged areas" },
+    { value: "300+", label: "Tutors Trained", description: "Dedicated mentors empowering the next generation" },
     { value: "85%", label: "Academic Improvement", description: "Average improvement in student academic performance" }
   ];
 

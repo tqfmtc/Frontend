@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
+import AnnouncementBanner from '../components/Announcement/AnnouncementBanner'
 import Hero from '../sections/Hero'
 import About from '../sections/About'
 import Programs from '../sections/Programs'
@@ -29,6 +30,7 @@ const HomePage = () => {
 
   return (
     <div>
+      <AnnouncementBanner />
       <Hero />
       <About />
       <Programs />

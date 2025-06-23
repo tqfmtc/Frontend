@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { FiPhone, FiLock, FiMapPin, FiRefreshCw, FiCheckCircle, FiEye, FiEyeOff } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import TutorDashboard from "../components/tutor/TutorDashboard";
 import usePost from "../components/CustomHooks/usePost";
 
@@ -80,7 +80,7 @@ const TutorPage = () => {
         currentLocation: currentLocation
       };
 
-      const result = await post("https://mtc-backend-jn5y.onrender.com/api/auth/tutor/login", payload);
+      const result = await post(`${import.meta.env.VITE_API_URL}/auth/tutor/login`, payload);
       
       if (result.data.message && result.data.message.includes('within 100 meters')) {
         setError(result.data.message);
@@ -99,7 +99,7 @@ const TutorPage = () => {
     setShowLocationPermission(true);
     try {
       const currentLocation = await getCurrentLocation();
-      await post("https://mtc-backend-jn5y.onrender.com/api/tutors/update-location", { currentLocation, token });
+      await post(`${import.meta.env.VITE_API_URL}/tutors/update-location`, { currentLocation, token });
       setPendingLocationUpdate(false);
       setShowLocationPermission(false);
     } catch (err) {
@@ -118,9 +118,10 @@ const TutorPage = () => {
       const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) throw new Error('Authentication token not found');
       
-      const result = await post("https://mtc-backend-jn5y.onrender.com/api/tutors/attendance", {
-        currentLocation,
-        token
+      const result = await post(`${import.meta.env.VITE_API_URL}/tutors/attendance`, {
+        token,
+        status: 'present',
+        location: currentLocation
       });
 
       if (result.data.message === 'Attendance submitted successfully') {
@@ -149,12 +150,13 @@ const TutorPage = () => {
         phone: phone,
         password: password
       };
-      const result = await post("https://mtc-backend-jn5y.onrender.com/api/auth/tutor/login", payload);
+      const result = await post(`${import.meta.env.VITE_API_URL}/auth/tutor/login`, payload);
       if (!result || !result.data) {
         setError("Server not responding or network error.");
         return;
       }
       localStorage.setItem("userData", JSON.stringify(result.data));
+    localStorage.setItem("token", result.data.token);
       setIsLoggedIn(true);
       
       // Clear any existing timeout before setting a new one
@@ -299,6 +301,16 @@ const TutorPage = () => {
               )}
             </motion.button>
           </form>
+
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600 mb-2">Or continue as</p>
+            <Link
+              to="/guest-login"
+              className="w-full inline-block btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 py-2.5 rounded-lg text-base font-medium transition-colors"
+            >
+              Guest Tutor
+            </Link>
+          </div>
 
           {isLoggedIn && (
             <div className="mt-6">

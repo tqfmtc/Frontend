@@ -50,7 +50,7 @@ const HadiyaManagement = () => {
   useEffect(() => {
     const fetchCenters = async () => {
       try {
-        const data = await authFetch('https://mtc-backend-jn5y.onrender.com/api/centers');
+        const data = await authFetch(`${import.meta.env.VITE_API_URL}/centers`);
         setCenters(data);
       } catch (error) {
         console.error('Error fetching centers:', error);
@@ -65,12 +65,27 @@ const HadiyaManagement = () => {
     const fetchTutors = async () => {
       setLoading(true);
       try {
-        const params = { month: selectedMonth, year: selectedYear };
+        const params = { 
+          month: selectedMonth, 
+          year: selectedYear
+        };
         if (selectedCenter) params.centerId = selectedCenter;
         if (searchTerm) params.tutorName = searchTerm.trim();
         
         const data = await fetchHadiyaReportAPI(params);
-        setTutors(data.report || []);
+        
+        // First, fetch all tutors to get their status
+        const allTutorsResponse = await authFetch(`${import.meta.env.VITE_API_URL}/tutors`);
+        const activeTutorIds = allTutorsResponse
+          .filter(tutor => tutor.status === 'active')
+          .map(tutor => tutor._id);
+        
+        // Filter the hadiya report to only include active tutors
+        const activeTutors = (data.report || []).filter(tutor => 
+          activeTutorIds.includes(tutor.tutorId)
+        );
+        
+        setTutors(activeTutors);
       } catch (error) {
         toast.error(error.message || 'Failed to fetch tutor data');
         setTutors([]);
@@ -345,13 +360,6 @@ const HadiyaManagement = () => {
         
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={refreshData}
-            disabled={loading}
-            className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center disabled:opacity-50"
-          >
-            <FiSave className="mr-2" /> Refresh Data
-          </button>
           <button
             onClick={handleExportCSV}
             disabled={loading || tutors.length === 0}

@@ -678,17 +678,7 @@ const TutorStudents = () => {
                         >
                           <FiEdit2 size={18} />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setShowDeletePopover(true);
-                            setStudentToDelete(student._id);
-                          }}
-                          className="text-red-600 hover:text-red-800 transition-colors"
-                        >
-                          <FiTrash2 size={18} />
-                        </button>
+                        
                       </div>
                     </td>
                   </tr>
@@ -723,16 +713,7 @@ const TutorStudents = () => {
                     >
                       <FiEdit2 size={18} />
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleDeleteStudent(student._id);
-                      }}
-                      className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
+                    
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-1 text-sm mt-2">
@@ -1187,6 +1168,7 @@ const TutorStudents = () => {
                 >
                   <FiEdit2 className="mr-2" /> Edit
                 </button>
+                {/*
                 <button
                   onClick={() => {
                     setShowDeletePopover(true);
@@ -1198,6 +1180,7 @@ const TutorStudents = () => {
                   <FiTrash2 className="mr-2" />
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
+                */}
                 <button
                   onClick={() => setShowDetails(null)}
                   className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

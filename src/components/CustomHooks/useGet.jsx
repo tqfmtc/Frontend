@@ -11,7 +11,7 @@ const useGet = (endpoint) => {
 
     try {
       setLoading(true);
-      const res = await fetch(`https://mtc-backend-jn5y.onrender.com/api${endpoint}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

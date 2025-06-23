@@ -48,7 +48,7 @@ const AdminPage = () => {
     setError('');
 
     try {
-      const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/auth/admin/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,6 +69,8 @@ const AdminPage = () => {
           role: data.role,
           token: data.token
         }));
+      // Store token separately for legacy components
+      localStorage.setItem('token', data.token);
         setIsLoggedIn(true);
         navigate('/admin-dashboard');
       } else {

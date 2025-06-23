@@ -80,7 +80,11 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs, isMobile, isOpen, onClose
               <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id);
+                  if (tab.onClick) {
+                    tab.onClick();
+                  } else {
+                    setActiveTab(tab.id);
+                  }
                   if (isMobile) onClose();
                 }}
                 className={`w-full flex items-center px-4 py-3 rounded-xl text-left transition-all duration-300 relative group ${activeTab === tab.id
