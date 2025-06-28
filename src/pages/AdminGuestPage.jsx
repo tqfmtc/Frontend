@@ -1,10 +1,10 @@
 import React from 'react';
-import AdminGuestList from '../components/GuestTutor/AdminGuestList';
+import AdminGuestTableModern from '../components/GuestTutor/AdminGuestTableModern';
 
 const AdminGuestPage = () => {
     return (
-        <div>
-            <AdminGuestList />
+        <div className="p-4 h-full">
+            <AdminGuestTableModern />
         </div>
     );
 };

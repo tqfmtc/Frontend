@@ -31,25 +31,47 @@ const createCustomIcon = (color) => {
 const redIcon = createCustomIcon('red')
 const blueIcon = createCustomIcon('blue')
 
-const LocationMarker = ({ onLocationUpdate }) => {
+const LocationMarker = ({ onLocationUpdate, onError }) => {
   const [position, setPosition] = useState(null)
+  const [locating, setLocating] = useState(true);
   const map = useMap()
 
   useEffect(() => {
-    map.locate({
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
-    }).on("locationfound", function (e) {
-      const newPosition = e.latlng
-      setPosition(newPosition)
-      map.flyTo(newPosition, map.getZoom())
-      onLocationUpdate(newPosition)
-    }).on("locationerror", function (e) {
-      console.error("Location error:", e.message)
-    })
-  }, [map])
+    if (!navigator.geolocation) {
+      onError('Geolocation is not supported by this browser.');
+      setLocating(false);
+      return;
+    }
 
+    const handleSuccess = (latlng) => {
+      onError(null);
+      setPosition(latlng);
+      map.flyTo(latlng, map.getZoom());
+      onLocationUpdate(latlng);
+      setLocating(false);
+    };
+
+    const handleError = (err) => {
+      let message = 'Unable to retrieve your location.';
+      if (err.code === 1) message = 'Permission denied. Enable location in browser settings.';
+      else if (err.code === 2) message = 'Location unavailable. Ensure GPS is on.';
+      else if (err.code === 3) message = 'Location timeout. Try again.';
+      onError(message);
+      setLocating(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      pos => handleSuccess({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      handleError,
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+    map.locate({ enableHighAccuracy: true, timeout: 10000 })
+      .on('locationfound', e => handleSuccess(e.latlng))
+      .on('locationerror', handleError);
+  }, [map]);
+
+  if (locating) return null;
   return position === null ? null : <Marker position={position} icon={redIcon} />
 }
 
@@ -101,6 +123,7 @@ const TutorOverview = () => {
   }, [])
 
   const handleLocationUpdate = (location) => {
+    setLocationError(null);
     setCurrentLocation(location)
     if (centerLocation) {
       // Calculate distance between current location and center location
@@ -294,7 +317,7 @@ const TutorOverview = () => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
-                <LocationMarker onLocationUpdate={handleLocationUpdate} />
+                <LocationMarker onLocationUpdate={handleLocationUpdate} onError={setLocationError} />
                 <Marker 
                   position={[centerLocation.lat, centerLocation.lng]} 
                   icon={blueIcon}
