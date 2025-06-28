@@ -304,6 +304,35 @@ const CenterManagement = () => {
     toast.success('Comments report downloaded successfully!');
   };
 
+  async function gotLocation(position){
+    console.log(position);
+    console.log(position.coords.latitude,position.coords.longitude)
+    
+    // Update the coordinates input field
+    const coordinates = `${position.coords.latitude}, ${position.coords.longitude}`;
+    setFormData(prev => ({ ...prev, coordinates }));
+    
+    // Update map center and marker
+    setMapCenter([position.coords.latitude, position.coords.longitude]);
+    setMarkerPosition([position.coords.latitude, position.coords.longitude]);
+    
+    // Call reverse geocoding to get the address
+    try {
+      const address = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+      setFormData(prev => ({ ...prev, location: address || '' }));
+    } catch (error) {
+      console.error('Error during reverse geocoding:', error);
+      setFormData(prev => ({ ...prev, location: 'Could not determine location' }));
+    }
+  }
+
+  function failed(){
+    console.log("Location fetch has failed");
+  }
+  const getLocation=()=>{
+    const result=navigator.geolocation.getCurrentPosition(gotLocation,failed);
+    console.log("1",result)
+  }
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
@@ -435,6 +464,10 @@ const CenterManagement = () => {
                         <span className="font-medium">Quick tip:</span> Right-click any location on Google Maps and select "Copy coordinates" to paste here
                       </span>
                     </div>
+                  </div>
+                  <div>
+                    <span className="block text-sm font-medium text-gray-700 mb-1">Use your current location</span>
+                    <button type="button" onClick={getLocation} className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">Current Location</button>
                   </div>
 
                   <div>
