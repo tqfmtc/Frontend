@@ -26,21 +26,53 @@ const createCustomIcon = (color) => {
 const redIcon = createCustomIcon('red');
 const blueIcon = createCustomIcon('blue');
 
-const LocationMarker = ({ onLocationUpdate }) => {
+const LocationMarker = ({ onLocationUpdate, onError }) => {
   const [position, setPosition] = useState(null);
+  const [locating, setLocating] = useState(true);
   const map = useMap();
 
   useEffect(() => {
-    map.locate({ enableHighAccuracy: true })
-      .on('locationfound', (e) => {
-        const pos = e.latlng;
-        setPosition(pos);
-        map.flyTo(pos, map.getZoom());
-        onLocationUpdate(pos);
-      })
-      .on('locationerror', (e) => console.error('Location error:', e.message));
+    if (!navigator.geolocation) {
+      onError('Geolocation is not supported by this browser.');
+      setLocating(false);
+      return;
+    }
+
+    const handleSuccess = (latlng) => {
+      onError(null);
+      setPosition(latlng);
+      map.flyTo(latlng, map.getZoom());
+      onLocationUpdate(latlng);
+      setLocating(false);
+    };
+
+    const handleError = (err) => {
+      let message = 'Unable to retrieve your location.';
+      if (err.code === 1) {
+        message = 'Permission denied. Enable location for this site in browser settings.';
+      } else if (err.code === 2) {
+        message = 'Location unavailable. Ensure GPS is turned on.';
+      } else if (err.code === 3) {
+        message = 'Location request timed out. Try again.';
+      }
+      onError(message);
+      setLocating(false);
+    };
+
+    // Primary: browser API
+    navigator.geolocation.getCurrentPosition(
+      pos => handleSuccess({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      handleError,
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+    // Fallback: Leaflet locate (some browsers handle better)
+    map.locate({ enableHighAccuracy: true, timeout: 10000 })
+      .on('locationfound', (e) => handleSuccess(e.latlng))
+      .on('locationerror', handleError);
   }, [map]);
 
+  if (locating) return null;
   return position === null ? null : <Marker position={position} icon={redIcon} />;
 };
 
@@ -50,6 +82,7 @@ const GuestOverview = () => {
   const [locationMatch, setLocationMatch] = useState(null);
   const [attendanceMarked, setAttendanceMarked] = useState(false);
   const [error, setError] = useState(null);
+  const [locating, setLocating] = useState(false);
   const centerLocation = guestData.centerCoordinates ? {
     lat: parseFloat(guestData.centerCoordinates[0]),
     lng: parseFloat(guestData.centerCoordinates[1])
@@ -69,6 +102,7 @@ const GuestOverview = () => {
   };
 
   const handleLocationUpdate = (loc) => {
+    setError(null);
     setCurrentLocation(loc);
     if (centerLocation) {
       const distance = calculateDistance(loc, centerLocation);
@@ -121,7 +155,7 @@ const GuestOverview = () => {
       <div className="h-80 rounded-2xl overflow-hidden shadow-xl">
         <MapContainer center={[centerLocation.lat, centerLocation.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <LocationMarker onLocationUpdate={handleLocationUpdate} />
+          <LocationMarker onLocationUpdate={handleLocationUpdate} onError={(msg)=>setError(msg)} />
           <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
           <Circle center={[centerLocation.lat, centerLocation.lng]} radius={1300} pathOptions={{ color: '#4F46E5', fillOpacity: 0.1 }} />
         </MapContainer>
