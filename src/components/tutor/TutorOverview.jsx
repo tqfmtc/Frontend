@@ -106,7 +106,7 @@ const TutorOverview = () => {
       // Calculate distance between current location and center location
       const calculatedDistance = calculateDistance(location, centerLocation)
       setDistance(calculatedDistance)
-      setLocationMatch(calculatedDistance <= 1.3) // Within 1300 meters (1.3 km)
+      setLocationMatch(calculatedDistance <= 0.1) // Within 1300 meters (1.3 km)
     }
   }
 
@@ -301,7 +301,7 @@ const TutorOverview = () => {
                 />
                 <Circle
                   center={[centerLocation.lat, centerLocation.lng]}
-                  radius={1300}
+                  radius={100}
                   pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
                 />
               </MapContainer>
