@@ -21,7 +21,7 @@ const Reports = () => {
   useEffect(() => {
     const fetchCenters = async () => {
       try {
-        const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/centers', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/centers`, {
           headers: {
             'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
           }
