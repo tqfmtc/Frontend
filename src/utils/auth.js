@@ -3,24 +3,60 @@
  */
 
 /**
+ * Utility: Decode JWT payload
+ */
+export const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (err) {
+    console.error('Failed to parse JWT:', err);
+    return null;
+  }
+};
+
+/**
+ * Checks if a JWT token is expired
+ * @param {string} token
+ * @returns {boolean}
+ */
+export const isTokenExpired = (token) => {
+  const payload = parseJwt(token);
+  if (!payload || !payload.exp) return true;
+  return Date.now() >= payload.exp * 1000;
+};
+
+/**
  * Gets the authentication token from localStorage with error handling
  * @returns {Object} Object containing token and any error message
  */
 export const getAuthToken = () => {
   try {
-    const userData = localStorage.getItem('userData');
-    
-    if (!userData) {
+    const userDataStr = localStorage.getItem('userData');
+    if (!userDataStr) {
       return { token: null, error: 'Please login to access this resource' };
     }
-    
-    const parsedData = JSON.parse(userData);
+
+    const parsedData = JSON.parse(userDataStr);
     const token = parsedData?.token;
-    
     if (!token) {
       return { token: null, error: 'Authentication token is missing' };
     }
-    
+
+    if (isTokenExpired(token)) {
+      // Cleanup stale credentials
+      localStorage.removeItem('userData');
+      return { token: null, error: 'Session expired. Please login again.' };
+    }
+
     return { token, error: null };
   } catch (error) {
     console.error('Error retrieving auth token:', error);

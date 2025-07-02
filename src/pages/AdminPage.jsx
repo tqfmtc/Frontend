@@ -25,22 +25,6 @@ const AdminPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    
-    // Check if already logged in
-    const userData = localStorage.getItem('userData');
-    if (userData) {
-      try {
-        const parsedData = JSON.parse(userData);
-        if (parsedData && parsedData._id && parsedData.role === 'admin') {
-          setIsLoggedIn(true);
-          navigate('/admin-dashboard');
-        } else {
-          localStorage.removeItem('userData');
-        }
-      } catch (error) {
-        localStorage.removeItem('userData');
-      }
-    }
   }, [navigate]);
   
   const handleSubmit = async (e) => {
