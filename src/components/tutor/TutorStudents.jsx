@@ -10,6 +10,14 @@ import "react-datepicker/dist/react-datepicker.css"
 import { useCenterRefetch } from '../../context/CenterRefetchContext'
 import axios from 'axios' // Add axios import
 
+// Helper to get ordinal suffix
+function getOrdinal(n) {
+  if (n === 1) return '1st';
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
+}
+
 const TutorStudents = () => {
   const [showDeletePopover, setShowDeletePopover] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
@@ -569,7 +577,9 @@ const TutorStudents = () => {
               >
                 <option value="all">All Classes</option>
                 {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i + 1} value={`${i + 1}th`}>{i + 1}th</option>
+                  <option key={i + 1} value={getOrdinal(i + 1)}>
+                    {getOrdinal(i + 1)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -917,8 +927,8 @@ const TutorStudents = () => {
                         >
                           <option value="">Select Class</option>
                           {Array.from({ length: 10 }, (_, i) => (
-                            <option key={i + 1} value={`${i + 1}th`}>
-                              {i + 1}th
+                            <option key={i + 1} value={getOrdinal(i + 1)}>
+                              {getOrdinal(i + 1)}
                             </option>
                           ))}
                         </select>
@@ -1268,7 +1278,9 @@ const TutorStudents = () => {
                         <select name="class" value={editFormData.class} onChange={handleEditChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" required >
                           <option value="">Select Class</option>
                           {Array.from({ length: 10 }, (_, i) => (
-                            <option key={i + 1} value={`${i + 1}th`}>{i + 1}th</option>
+                            <option key={i + 1} value={getOrdinal(i + 1)}>
+                              {getOrdinal(i + 1)}
+                            </option>
                           ))}
                         </select>
                       </div>

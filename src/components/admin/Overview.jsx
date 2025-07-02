@@ -49,8 +49,12 @@ const Overview = () => {
     return tutors.filter(tutor => tutor.status === 'active');
   }, [tutors]);
 
+  const activeCenters = useMemo(() => {
+    if (!centers) return [];
+    return centers.filter(center => center.status === 'active');
+  }, [centers]);
   // Fetch recent attendance directly from Attendance collection
-  const { response: recentAttendance, loading: attendanceLoading, refetch: refetchAttendance } = useGet('/attendance/recent');
+  const { response: recentAttendance, loading: attendanceLoading, refetch: refetchAttendance } = useGet('/attendance/today');
   
   // Local state to manage attendance display
   const [localAttendance, setLocalAttendance] = useState([]);
@@ -141,7 +145,7 @@ const Overview = () => {
 
   const stats = [
     { label: 'Active Tutors', value: tutorsLoading ? '...' : activeTutors?.length || 0, icon: FiUsers },
-    { label: 'Total Centers', value: centersLoading ? '...' : centers?.length || 0, icon: FiMapPin },
+    { label: 'Total Centers', value: centersLoading ? '...' : activeCenters?.length || 0, icon: FiMapPin },
     { label: 'Attendance', value: attendancePercentage, icon: FiClock }
   ]
 
@@ -206,7 +210,7 @@ const Overview = () => {
       </div>
     );
   }
-
+  console.log(recentAttendance)
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
@@ -248,7 +252,7 @@ const Overview = () => {
           {attendanceLoading ? (
             <p>Loading recent activity...</p>
           ) : localAttendance && localAttendance.length > 0 ? (
-            localAttendance.slice(0, 5).map((record, index) => (
+            localAttendance.slice(0, localAttendance.length).map((record, index) => (
               <motion.div
                 key={record._id}
                 initial={{ opacity: 0, x: -20 }}

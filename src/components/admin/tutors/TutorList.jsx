@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+// Use VITE_API_URL for backend endpoint
+
 import Popover from '../../common/Popover';
 
 const TutorList = ({ onEdit, onDelete, onProfile }) => {
@@ -68,7 +70,8 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
         return;
       }
 
-      const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/tutors', {
+      const apiUrl = `${import.meta.env.VITE_API_URL}/tutors`;
+      const response = await fetch(apiUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -93,6 +96,10 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
     setTutorToDelete(tutor);
     setShowDeletePopover(true);
   };
+
+  const statusaction = (e) => {
+    console.log(e);
+  }
   
   // Handle delete tutor after confirmation
   const handleDeleteTutor = async () => {
@@ -114,7 +121,8 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
         return;
       }
 
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/tutors/${tutorId}`, {
+      const apiUrl = `${import.meta.env.VITE_API_URL}/tutors/${tutorId}`;
+      const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -384,7 +392,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                       </button>
                     </div>
                   </td>
-                  <td style={{ padding: '14px 16px', color: tutor.status ==="inactive"?"red":"green"}}>{tutor.status==="inactive"?"Inactive":"Active"}</td>
+                  <button onClick={statusaction} style={{ padding: '14px 16px', color: tutor.status ==="inactive"?"red":"green"}}>{tutor.status==="inactive"?"Inactive":"Active"}</button>
                 </tr>
               ))
             )}
