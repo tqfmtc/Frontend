@@ -1,25 +1,18 @@
-/* Animation for AnnouncementBanner scrolling text */
-@keyframes marquee-ltr {
+/* Announcement banner marquee */
+
+@keyframes marquee-left {
   0% {
-    transform: translateX(100%);
+    transform: translateX(0);
   }
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%); /* shift exactly width of first copy */
   }
 }
 
-.marquee-ltr {
-  display: inline-block;
-  animation: marquee-ltr 25s linear infinite;
-  font-size: 1rem; /* 16px */
-  font-weight: 600;
-  line-height: 40px; /* vertically center within 40px bar */
-  text-align: center;
-  min-width: 100%;
-  will-change: transform;
-}
-
-.marquee-ltr:hover {
-  animation-play-state: paused;
-
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation-name: marquee-left;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
