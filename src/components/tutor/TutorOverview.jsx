@@ -43,7 +43,13 @@ const LocationMarker = ({ onLocationUpdate, onError }) => {
       return;
     }
 
-    const handleSuccess = (latlng) => {
+    const handleSuccess = ({ latitude, longitude, accuracy }) => {
+      if (accuracy > 50) {
+        onError('Low location accuracy. Try moving to an open area.');
+        setLocating(false);
+        return;
+      }
+      const latlng = { lat: latitude, lng: longitude };
       onError(null);
       setPosition(latlng);
       map.flyTo(latlng, map.getZoom());
@@ -61,13 +67,24 @@ const LocationMarker = ({ onLocationUpdate, onError }) => {
     };
 
     navigator.geolocation.getCurrentPosition(
-      pos => handleSuccess({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      pos => handleSuccess({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      }),
       handleError,
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 
-    map.locate({ enableHighAccuracy: true, timeout: 10000 })
-      .on('locationfound', e => handleSuccess(e.latlng))
+    map.locate({ enableHighAccuracy: true, timeout: 5000 })
+      .on('locationfound', e => {
+        if (e.accuracy > 50) {
+          onError('Low map accuracy. Try again in open space.');
+          setLocating(false);
+          return;
+        }
+        handleSuccess({ latitude: e.latitude, longitude: e.longitude, accuracy: e.accuracy });
+      })
       .on('locationerror', handleError);
   }, [map]);
 

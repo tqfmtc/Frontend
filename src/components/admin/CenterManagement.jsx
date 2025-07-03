@@ -286,7 +286,6 @@ const CenterManagement = () => {
       'Comment': comment.text,
       'Date':new Intl.DateTimeFormat('en-GB').format(new Date(comment.createdAt))
     }));
-    console.log(csvData);
     // Convert to CSV
     const csv = Papa.unparse(csvData);
     

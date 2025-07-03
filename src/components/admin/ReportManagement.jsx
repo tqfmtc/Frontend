@@ -64,13 +64,13 @@ const ReportManagement = () => {
 
   const handleDownloadCSV = () => {
     // Generate array of all days in the selected month
-    const daysInMonth = [];
+    const daysInMonthArr = [];
     const date = new Date(selectedYear, selectedMonth - 1, 1);
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     
     for (let i = 1; i <= lastDay; i++) {
       date.setDate(i);
-      daysInMonth.push(format(date, 'yyyy-MM-dd'));
+      daysInMonthArr.push(format(date, 'yyyy-MM-dd'));
     }
     
     // Create CSV headers with a column for each day
@@ -80,7 +80,7 @@ const ReportManagement = () => {
     };
     
     // Add a column for each day in the month
-    daysInMonth.forEach(day => {
+    daysInMonthArr.forEach(day => {
       const displayDate = day.split('-')[2]; // Just the day part (DD)
       headers[`Day ${displayDate}`] = `Day ${displayDate}`;
     });
@@ -108,7 +108,7 @@ const ReportManagement = () => {
       };
       
       // Add attendance status for each day
-      daysInMonth.forEach(day => {
+      daysInMonthArr.forEach(day => {
         const status = report.attendance[day];
         row[`Day ${day.split('-')[2]}`] = status ? 'Present' : 'Absent';
       });
