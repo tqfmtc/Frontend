@@ -3,31 +3,13 @@ export const registerSW = async () => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('SW registered: ', registration);
-      
-      // Check for updates
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New content is available, show update prompt
-            showUpdatePrompt(registration);
-          }
-        });
-      });
-      
       return registration;
     } catch (error) {
-      console.log('SW registration failed: ', error);
+      console.error('Service worker registration failed:', error);
+      return null;
     }
   }
-};
-
-const showUpdatePrompt = (registration) => {
-  if (confirm('New version available! Reload to update?')) {
-    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    window.location.reload();
-  }
+  return null;
 };
 
 // Check if app is running in standalone mode (installed)
@@ -82,13 +64,5 @@ export const clearCache = async () => {
     await Promise.all(
       cacheNames.map(cacheName => caches.delete(cacheName))
     );
-  }
-};
-
-// Background sync registration
-export const registerBackgroundSync = async (tag) => {
-  if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-    const registration = await navigator.serviceWorker.ready;
-    await registration.sync.register(tag);
   }
 }; 
