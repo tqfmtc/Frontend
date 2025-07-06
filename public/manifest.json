@@ -1,0 +1,59 @@
+{
+  "name": "Mohalla Tuition Center",
+  "short_name": "Mohalla MTC",
+  "description": "Mohalla Tuition Centers by The Quran Foundation - Transforming the lives of marginalized communities through education and empowerment.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/src/assets/favicon-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/favicon-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/favicon-logo.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "apple touch"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View the main dashboard",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/src/assets/favicon-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "View attendance reports",
+      "url": "/admin/reports",
+      "icons": [
+        {
+          "src": "/src/assets/favicon-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+} 

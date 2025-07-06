@@ -16,6 +16,7 @@ import GuestLoginPage from './pages/GuestLoginPage'
 import GuestDashboard from './pages/GuestDashboard'
 import { CenterRefetchProvider } from './context/CenterRefetchContext';
 import AnnouncementBanner from './components/Announcement/AnnouncementBanner';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, role }) => {
@@ -87,6 +88,7 @@ function App() {
         </Routes>
       </main>
       <ToastContainer />
+      <PWAInstallPrompt />
       {/* <Footer /> */}
     </div>
     </CenterRefetchProvider>
