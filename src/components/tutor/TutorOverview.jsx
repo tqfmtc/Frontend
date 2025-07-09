@@ -31,64 +31,66 @@ const createCustomIcon = (color) => {
 const redIcon = createCustomIcon('red')
 const blueIcon = createCustomIcon('blue')
 
-const LocationMarker = ({ onLocationUpdate, onError }) => {
+const LocationMarker = ({ onLocationUpdate }) => {
   const [position, setPosition] = useState(null)
-  const [locating, setLocating] = useState(true);
   const map = useMap()
+  const watchIdRef = useRef(null)
+  const hasAnimatedRef = useRef(false)
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      onError('Geolocation is not supported by this browser.');
-      setLocating(false);
       return;
     }
 
-    const handleSuccess = ({ latitude, longitude, accuracy }) => {
-      if (accuracy > 500) {
-        onError('Low location accuracy. Try moving to an open area.');
-        setLocating(false);
-        return;
-      }
+    const handleSuccess = ({ latitude, longitude }) => {
       const latlng = { lat: latitude, lng: longitude };
-      onError(null);
       setPosition(latlng);
-      map.flyTo(latlng, map.getZoom());
       onLocationUpdate(latlng);
-      setLocating(false);
+      if (!hasAnimatedRef.current) {
+        map.flyTo(latlng, 17, { animate: true }); // Initial animation, zoom in to 17
+        hasAnimatedRef.current = true;
+      } else {
+        map.setView(latlng, map.getZoom(), { animate: false }); // Always keep user centered, no animation
+      }
     };
 
-    const handleError = (err) => {
-      let message = 'Unable to retrieve your location.';
-      if (err.code === 1) message = 'Permission denied. Enable location in browser settings.';
-      else if (err.code === 2) message = 'Location unavailable. Ensure GPS is on.';
-      else if (err.code === 3) message = 'Location timeout. Try again.';
-      onError(message);
-      setLocating(false);
+    const handleError = () => {
+      // No error handling as per new requirements
     };
 
-    navigator.geolocation.getCurrentPosition(
+    // Start watching position
+    watchIdRef.current = navigator.geolocation.watchPosition(
       pos => handleSuccess({
         latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy
+        longitude: pos.coords.longitude
       }),
       handleError,
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
-    map.locate({ enableHighAccuracy: true, timeout: 5000 })
-      .on('locationfound', e => {
-        if (e.accuracy > 500) {
-          onError('Low map accuracy. Try again in open space.');
-          setLocating(false);
-          return;
-        }
-        handleSuccess({ latitude: e.latitude, longitude: e.longitude, accuracy: e.accuracy });
-      })
-      .on('locationerror', handleError);
-  }, [map]);
+    // Poll every 5 seconds by clearing and restarting the watch
+    const interval = setInterval(() => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        pos => handleSuccess({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        }),
+        handleError,
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
+    }, 5000);
 
-  if (locating) return null;
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      clearInterval(interval);
+    };
+  }, [map, onLocationUpdate]);
+
   return position === null ? null : <Marker position={position} icon={redIcon} />
 }
 
@@ -334,7 +336,7 @@ const TutorOverview = () => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
-                <LocationMarker onLocationUpdate={handleLocationUpdate} onError={setLocationError} />
+                <LocationMarker onLocationUpdate={handleLocationUpdate} />
                 <Marker 
                   position={[centerLocation.lat, centerLocation.lng]} 
                   icon={blueIcon}
