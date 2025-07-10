@@ -73,49 +73,47 @@ const Reports = () => {
   }, [selectedDate, selectedCenter])
 
   const handleExportCSV = () => {
-    console.log('Export CSV button clicked'); // Debug log
-    try {
-      const monthDays = eachDayOfInterval({
+    const monthDays = eachDayOfInterval({
+      start: startOfMonth(selectedDate),
+      end: endOfMonth(selectedDate)
+    })
+
+    const data = tutors.map(tutor => {
+      // Calculate days in month for the selected month
+      const daysInMonth = eachDayOfInterval({
         start: startOfMonth(selectedDate),
         end: endOfMonth(selectedDate)
+      }).length;
+      
+      const presentDays = Object.values(tutor.attendance).filter(Boolean).length;
+      
+      const attendanceData = {
+        'Tutor Name': tutor.tutor.name,
+        'Center': tutor.center.name,
+        'Total Days': daysInMonth,
+        'Present Days': presentDays,
+        'Absent Days': daysInMonth - presentDays,
+      }
+
+      // Add attendance for each day
+      monthDays.forEach(day => {
+        const dateStr = format(day, 'yyyy-MM-dd')
+        attendanceData[format(day, 'dd MMM')] = tutor.attendance[dateStr] ? 'Present' : 'Absent'
       })
 
-      const data = tutors.map(tutor => {
-        // Calculate days in month for the selected month
-        const daysInMonth = eachDayOfInterval({
-          start: startOfMonth(selectedDate),
-          end: endOfMonth(selectedDate)
-        }).length;
-        const presentDays = Object.values(tutor.attendance).filter(Boolean).length;
-        const attendanceData = {
-          'Tutor Name': tutor.tutor.name,
-          'Center': tutor.center.name,
-          'Total Days': daysInMonth,
-          'Present Days': presentDays,
-          'Absent Days': daysInMonth - presentDays,
-        }
-        // Add attendance for each day
-        monthDays.forEach(day => {
-          const dateStr = format(day, 'yyyy-MM-dd')
-          attendanceData[format(day, 'dd MMM')] = tutor.attendance[dateStr] ? 'Present' : 'Absent'
-        })
-        return attendanceData
-      })
+      return attendanceData
+    })
 
-      const csv = Papa.unparse(data)
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      link.setAttribute('download', `attendance_report_${format(selectedDate, 'MMM_yyyy')}.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } catch (err) {
-      console.error('Error exporting CSV:', err)
-      alert('Failed to export CSV: ' + err.message)
-    }
+    const csv = Papa.unparse(data)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `attendance_report_${format(selectedDate, 'MMM_yyyy')}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleExportPDF = () => {

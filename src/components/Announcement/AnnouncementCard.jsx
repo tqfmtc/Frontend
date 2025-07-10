@@ -8,7 +8,7 @@ const AnnouncementCard = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await fetch(`https://mtc-backend-jn5y.onrender.com/api/announcements`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/announcements`);
         const data = await res.json();
         if (Array.isArray(data) && data.length) {
           // pick highest priority (already sorted in backend)

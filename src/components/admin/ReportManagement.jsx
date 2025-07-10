@@ -29,9 +29,7 @@ const ReportManagement = () => {
       }
 
       const response = await fetch(
-        `https://mtc-backend-jn5y.onrender.com/api/attendance/report/download?month=${selectedMonth}&year=${selectedYear}${
-          selectedCenter ? `&centerId=${selectedCenter}` : ''
-        }`,
+        `${import.meta.env.VITE_API_URL}/attendance/report/download?month=${selectedMonth}&year=${selectedYear}${selectedCenter ? `&centerId=${selectedCenter}` : ''}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

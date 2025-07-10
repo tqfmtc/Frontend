@@ -29,7 +29,7 @@ const AnnouncementBanner = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await fetch(`https://mtc-backend-jn5y.onrender.com/api/announcements`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/announcements`);
         const data = await res.json();
         if (Array.isArray(data) && data.length) {
             const now = Date.now();
