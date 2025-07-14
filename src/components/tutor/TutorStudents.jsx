@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import DatePicker from 'react-datepicker'
-import { FiSearch, FiEdit2, FiTrash2, FiDownload, FiUserPlus, FiFilter, FiX, FiCheck, FiCalendar, FiChevronDown } from 'react-icons/fi'
+import { FiSearch, FiEdit2, FiTrash2, FiDownload, FiUserPlus, FiX, FiCalendar, FiChevronDown } from 'react-icons/fi'
 import Papa from 'papaparse'
 import useGet from '../CustomHooks/useGet'
 import { toast } from 'react-hot-toast'
 import "react-datepicker/dist/react-datepicker.css"
 import { useCenterRefetch } from '../../context/CenterRefetchContext'
-import axios from 'axios' // Add axios import
+
 
 // Helper to get ordinal suffix
 function getOrdinal(n) {
@@ -85,7 +85,7 @@ const TutorStudents = () => {
   const [showDetails, setShowDetails] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState(new Date())
+  
   const [selectedFilter, setSelectedFilter] = useState('active')
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -95,7 +95,10 @@ const TutorStudents = () => {
     totalDays: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const itemsPerPage = 10
+  // Dynamically decide how many rows fit vertically based on viewport
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const tableRef = useRef(null)
+  const paginationRef = useRef(null)
   const [selectedClass, setSelectedClass] = useState('all')
   const [editMode, setEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState(null)
@@ -125,6 +128,29 @@ const TutorStudents = () => {
   })
 
   const refetchCenterContext = useCenterRefetch()
+
+  // ---------- Pagination & Filtering ----------
+  // Calculate itemsPerPage based on actual space so the page never scrolls
+  useLayoutEffect(() => {
+    const calcItemsPerPage = () => {
+      if (!tableRef.current || !paginationRef.current) return
+      const rowHeight = 56 // approximate single row height
+      const top = tableRef.current.getBoundingClientRect().top
+      const paginationHeight = paginationRef.current.getBoundingClientRect().height
+      const EXTRA_GAP = 60 // space below pagination and OS dock
+      const available = window.innerHeight - top - paginationHeight - EXTRA_GAP
+      const rows = Math.max(4, Math.floor(available / rowHeight))
+      setItemsPerPage(rows)
+    }
+    calcItemsPerPage()
+    window.addEventListener('resize', calcItemsPerPage)
+    return () => window.removeEventListener('resize', calcItemsPerPage)
+  }, [])
+
+  // Reset to first page whenever filters/search or data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedClass, students]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -331,44 +357,7 @@ const TutorStudents = () => {
     }
   }
 
-  const handleDelete = async (id) => {
-    setIsDeleting(true);
-    try {
-      // Get token from userData in localStorage
-      const userData = JSON.parse(localStorage.getItem('userData') || '{}')
-      const token = userData.token
-      if (!token) {
-        throw new Error('Please login to continue')
-      }
 
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/students/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to delete student')
-      }
-
-      toast.success('Student deleted successfully!')
-      setShowDetails(null) // Close any open details view
-      refetch() // Refresh the students list
-      // Trigger center refetch for instant update
-      if (refetchCenterContext && refetchCenterContext.current) {
-        refetchCenterContext.current();
-      }
-    } catch (error) {
-      console.error('Error deleting student:', error)
-      toast.error(error.message || 'Failed to delete student')
-    } finally {
-      setIsDeleting(false);
-      setShowDeletePopover(false);
-      setStudentToDelete(null);
-    }
-  }
 
   const handleExportCSV = () => {
     // First, collect all unique months from all students' attendance records
@@ -777,7 +766,7 @@ const TutorStudents = () => {
   }
 
   return (
-    <>
+  
     <div className="min-h-screen w-full bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-blue-100 via-accent-50 to-primary-50 py-6 px-4 sm:px-6 space-y-6">
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6 mb-8">
@@ -852,10 +841,10 @@ const TutorStudents = () => {
       </AnimatePresence>
 
       {/* Students Table with Integrated Filters */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-white/20 flex flex-col h-[calc(100vh-300px)]">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 flex flex-col min-w-0">
         {/* Table Header with Filters */}
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 mb-6">
             {/* Search Input */}
             <div className="relative w-full">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -898,29 +887,13 @@ const TutorStudents = () => {
                 className="w-full"
               />
             </div>
-
-            {/* Buttons */}
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full md:w-auto">
-              <button
-                onClick={() => setShowForm(true)}
-                className="px-4 py-2 bg-gradient-to-r from-accent-600 to-primary-600 text-white rounded-lg hover:from-accent-700 hover:to-primary-700 transition-all duration-300 flex items-center"
-              >
-                <FiUserPlus className="mr-2 text-lg" /> Add Student
-              </button>
-              <button
-                onClick={handleExportCSV}
-                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 flex items-center"
-              >
-                <FiDownload className="mr-2 text-lg" /> Export CSV
-              </button>
-            </div>
           </div>
         </div>
 
         {/* Desktop Table View */}
-        <div className="w-full flex flex-col h-full">
+        <div className="w-full flex flex-col h-full hidden md:flex">
           <div className="relative flex-1 overflow-x-auto">
-            <table className="w-full table-fixed">
+            <table ref={tableRef} className="w-full md:min-w-[700px] table-fixed">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gray-50">
                   <th className="px-2 py-3 sm:px-4 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -963,7 +936,7 @@ const TutorStudents = () => {
                     <div className="text-sm text-gray-900">{student.schoolInfo?.name || '-'}</div>
                   </td>
                   <td className="px-2 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-center">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold select-none cursor-default ${student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
                       {student.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -1006,86 +979,86 @@ const TutorStudents = () => {
           {paginatedStudents.map((student) => (
             <div
               key={student._id}
-              className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow p-4 flex flex-col"
               onClick={() => setShowDetails(student)}
             >
-              <div className="flex justify-between items-start mb-2">
+              <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-medium text-gray-900">{student.name}</h3>
+                  <h3 className="text-base font-semibold text-gray-800">{student.name}</h3>
                   <p className="text-sm text-gray-500">{student.fatherName}</p>
+                  <p className="text-sm text-gray-500">
+                    {student.schoolInfo?.class || '-'} | {student.schoolInfo?.name || '-'}
+                  </p>
                 </div>
-                <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleMarkAttendance(student)}
-                    disabled={student.status !== 'active'}
-                    className={`p-2 text-blue-600 hover:text-blue-800 transition-colors ${student.status !== 'active' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <FiCalendar size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleEditStudent(student)}
-                    className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    <FiEdit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDeletePopover(true);
-                      setStudentToDelete(student._id);
-                    }}
-                    className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                    title="Delete Student"
-                  >
-                    <FiTrash2 size={18} />
-                  </button>
-                </div>
+                <span
+                  className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                    student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {student.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-1 text-sm mt-2">
-                <div>
-                  <span className="text-gray-500">Class:</span> {student.schoolInfo?.class || '-'}
-                </div>
-                <div>
-                  <span className="text-gray-500">School:</span> {student.schoolInfo?.name || '-'}
-                </div>
-                <div className="col-span-2 mt-2">
-                  <span className="text-gray-500">Status:</span>{' '}
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                    {student.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
+              <div
+                className="flex justify-end space-x-4 mt-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => handleMarkAttendance(student)}
+                  disabled={student.status !== 'active'}
+                  className={`text-blue-600 hover:text-blue-800 transition-colors ${
+                    student.status !== 'active' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <FiCalendar size={18} />
+                </button>
+                <button
+                  onClick={() => handleEditStudent(student)}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <FiEdit2 size={18} />
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeletePopover(true);
+                    setStudentToDelete(student._id);
+                  }}
+                  className="text-red-600 hover:text-red-800 transition-colors"
+                  title="Delete Student"
+                >
+                  <FiTrash2 size={18} />
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 pt-4 mt-4 gap-4">
-        <div className="flex items-center text-center sm:text-left">
-          <span className="text-sm text-gray-700">
-            Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-            <span className="font-medium">
-              {Math.min(startIndex + itemsPerPage, filteredStudents.length)}
-            </span>{' '}
-            of <span className="font-medium">{filteredStudents.length}</span> results
-          </span>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2 mt-4">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded-md ${currentPage === page
-                ? 'bg-accent-600 text-white'
-                : 'bg-white text-gray-500 hover:bg-gray-300'
-                }`}
-            >
-              {page}
-            </button>
-          ))}
+        {/* Pagination */}
+        <div ref={paginationRef} className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 pt-4 mt-4 gap-4 px-6 pb-4">
+          <div className="flex items-center text-center sm:text-left">
+            <span className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(startIndex + itemsPerPage, filteredStudents.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredStudents.length}</span> results
+            </span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded-md ${currentPage === page
+                  ? 'bg-accent-600 text-white'
+                  : 'bg-white text-gray-500 hover:bg-gray-300'
+                  }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Add Student Form Modal */ }
   <AnimatePresence>
@@ -1749,9 +1722,8 @@ const TutorStudents = () => {
       </motion.div>
     )}
   </AnimatePresence>
-    
-    </>
+  </div>
   )
 }
 
-export default TutorStudents
+export default TutorStudents;

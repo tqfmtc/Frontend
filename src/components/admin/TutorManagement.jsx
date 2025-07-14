@@ -324,31 +324,31 @@ const TutorManagement = () => {
         <>
           <div style={{ 
             background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
-            borderRadius: '12px', 
-            padding: '32px', 
-            marginBottom: '32px',
+            borderRadius: '10px', 
+            padding: '24px', 
+            marginBottom: '24px',
             color: 'white',
             boxShadow: '0 10px 25px rgba(59, 130, 246, 0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ fontSize: '28px', fontWeight: '700', margin: '0 0 8px 0' }}>Tutor Management</h1>
-                <p style={{ fontSize: '16px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
+                <h1 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 6px 0' }}>Tutor Management</h1>
+                <p style={{ fontSize: '14px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
               </div>
               <button
                 style={{ 
-                  padding: '12px 28px', 
+                  padding: '8px 20px', 
                   background: 'white', 
                   color: '#1e3a8a', 
                   border: 'none', 
-                  borderRadius: '8px', 
+                  borderRadius: '6px', 
                   fontWeight: '600', 
                   fontSize: '16px', 
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '6px'
                 }}
                 onClick={handleAdd}
               >
