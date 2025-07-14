@@ -11,6 +11,9 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [filteredTutors, setFilteredTutors] = useState([]);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Popover states
   const [showDeletePopover, setShowDeletePopover] = useState(false);
@@ -46,6 +49,8 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
     }
     
     setFilteredTutors(filtered);
+    // Reset to first page whenever filters change
+    setCurrentPage(1);
   }, [searchTerm, statusFilter, tutors]);
 
   // Fetch tutors from API
@@ -153,6 +158,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   };
 
   // Get stats
+  // Pagination helpers
+  const totalPages = Math.ceil(filteredTutors.length / itemsPerPage);
+  const indexOfLastTutor = currentPage * itemsPerPage;
+  const indexOfFirstTutor = indexOfLastTutor - itemsPerPage;
+  const currentTutors = filteredTutors.slice(indexOfFirstTutor, indexOfLastTutor);
+
   const getStats = () => {
     if (!tutors || tutors.length === 0) return { total: 0 };
     
@@ -192,12 +203,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
         <div style={{ 
           background: 'white', 
           borderRadius: '8px', 
-          padding: '16px', 
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          padding: '12px', 
+          boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
           border: '1px solid #e5e7eb'
         }}>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Total Tutors</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>{stats.total}</div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Total Tutors</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>{stats.total}</div>
         </div>
       </div>
       
@@ -265,7 +276,22 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
       
       {/* Tutors Table */}
       <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '14px',
+            tableLayout: 'fixed'
+          }}
+        >
+          <colgroup>
+            <col style={{ width: '15%' }} /> {/* Name */}
+            <col style={{ width: '10%' }} /> {/* Phone */}
+            <col style={{ width: '20%' }} /> {/* Email */}
+            <col style={{ width: '14%' }} /> {/* Center */}
+            <col style={{ width: '20%' }} /> {/* Actions */}
+            <col style={{ width: '13%' }} /> {/* Status */}
+          </colgroup>
           <thead>
             <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Name</th>
@@ -280,12 +306,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
           <tbody>
             {filteredTutors.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
                   {searchTerm ? 'No tutors match your search criteria' : 'No tutors found'}
                 </td>
               </tr>
             ) : (
-              filteredTutors.map((tutor) => (
+              currentTutors.map((tutor) => (
                 <tr 
                   key={tutor._id} 
                   style={{ 
@@ -295,12 +321,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                     opacity: 1
                   }}
                 >
-                  <td style={{ padding: '14px 16px' }}>
+                  <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ fontWeight: '500', color: '#111827' }}>{tutor.name}</div>
                   </td>
-                  <td style={{ padding: '14px 16px', color: '#4b5563' }}>{tutor.phone}</td>
-                  <td style={{ padding: '14px 16px', color: '#4b5563' }}>{tutor.email}</td>
-                  <td style={{ padding: '14px 16px', color: '#4b5563' }}>
+                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{tutor.phone}</td>
+                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{tutor.email}</td>
+                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
                     {tutor.assignedCenter ? (
                       <div style={{ 
                         display: 'inline-block',
@@ -314,12 +340,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                       </div>
                     ) : 'Not assigned'}
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
                       <button 
                         onClick={() => onProfile(tutor)}
                         style={{ 
-                          padding: '6px 12px', 
+                          padding: '4px 8px', 
                           background: '#f3f4f6', 
                           color: '#1f2937', 
                           border: 'none', 
@@ -329,11 +355,11 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                           alignItems: 'center',
                           gap: '4px',
                           fontWeight: '500',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           transition: 'all 0.2s'
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                           <circle cx="12" cy="12" r="3"></circle>
                         </svg>
@@ -342,7 +368,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                       <button 
                         onClick={() => onEdit(tutor)}
                         style={{ 
-                          padding: '6px 12px', 
+                          padding: '4px 8px', 
                           background: '#dbeafe', 
                           color: '#1e40af', 
                           border: 'none', 
@@ -352,11 +378,11 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                           alignItems: 'center',
                           gap: '4px',
                           fontWeight: '500',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           transition: 'all 0.2s'
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
@@ -366,7 +392,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                         onClick={() => tutor.status !== 'inactive' && confirmDeleteTutor(tutor)}
                         disabled={tutor.status === 'inactive'}
                         style={{ 
-                          padding: '6px 12px', 
+                          padding: '4px 8px', 
                           background: tutor.status === 'inactive' ? '#e5e7eb' : '#fee2e2', 
                           color: tutor.status === 'inactive' ? '#9ca3af' : '#b91c1c', 
                           border: 'none', 
@@ -376,13 +402,13 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                           alignItems: 'center',
                           gap: '4px',
                           fontWeight: '500',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           transition: 'all 0.2s',
                           opacity: tutor.status === 'inactive' ? 0.7 : 1
                         }}
                         title={tutor.status === 'inactive' ? 'Cannot delete an inactive tutor' : 'Delete tutor'}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"></polyline>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                           <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -392,12 +418,81 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                       </button>
                     </div>
                   </td>
-                  <button onClick={statusaction} style={{ padding: '14px 16px', color: tutor.status ==="inactive"?"red":"green"}}>{tutor.status==="inactive"?"Inactive":"Active"}</button>
+                  <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        color: tutor.status === 'inactive' ? 'red' : 'green',
+                        cursor: 'default',
+                        userSelect: 'none',
+                        fontWeight: 600,
+                        minWidth: 70,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {tutor.status === 'inactive' ? 'Inactive' : 'Active'}
+                    </span>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{
+            marginTop: '16px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb',
+                background: currentPage === 1 ? '#f9fafb' : 'white',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Prev
+            </button>
+            {[...Array(totalPages)].map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentPage(idx + 1)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                  background: currentPage === idx + 1 ? '#dbeafe' : 'white',
+                  color: currentPage === idx + 1 ? '#1e40af' : '#374151',
+                  cursor: 'pointer'
+                }}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb',
+                background: currentPage === totalPages ? '#f9fafb' : 'white',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Delete Confirmation Popover */}
