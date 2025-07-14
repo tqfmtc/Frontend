@@ -18,6 +18,16 @@ const AnnouncementManagement = () => {
     return new Date(a.endDate).getTime() >= oneYearAgo;
   };
 
+  // Helper for dd/mm/yy format
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
   const fetchAll = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/announcements/all`, {
@@ -145,7 +155,14 @@ const AnnouncementManagement = () => {
               placeholderText="Start Date"
               className="border p-2 rounded w-full"
               minDate={new Date()}
+              dateFormat="dd/MM/yy"
+              renderCustomHeader={({ date }) => (
+                <div className="text-xs text-gray-500 px-2 py-1">{formatDate(date)}</div>
+              )}
             />
+            {form.startDate && (
+              <div className="text-xs text-gray-500 mt-1">Selected: {formatDate(form.startDate)}</div>
+            )}
           </div>
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
@@ -155,7 +172,14 @@ const AnnouncementManagement = () => {
               placeholderText="End Date"
               className="border p-2 rounded w-full"
               minDate={form.startDate || new Date()}
+              dateFormat="dd/MM/yy"
+              renderCustomHeader={({ date }) => (
+                <div className="text-xs text-gray-500 px-2 py-1">{formatDate(date)}</div>
+              )}
             />
+            {form.endDate && (
+              <div className="text-xs text-gray-500 mt-1">Selected: {formatDate(form.endDate)}</div>
+            )}
           </div>
         </div>
         <div>
@@ -221,7 +245,7 @@ const AnnouncementManagement = () => {
               </div>
               <p className="font-semibold">{a.title}</p>
               <p className="text-sm mb-1 whitespace-pre-wrap">{a.body}</p>
-              <p className="text-xs text-gray-500">{new Date(a.startDate).toLocaleDateString()} to {new Date(a.endDate).toLocaleDateString()} | Priority: {a.priority}</p>
+              <p className="text-xs text-gray-500">{formatDate(a.startDate)} to {formatDate(a.endDate)} | Priority: {a.priority}</p>
             </li>
           ))}
         </ul>

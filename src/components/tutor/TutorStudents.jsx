@@ -133,7 +133,15 @@ const TutorStudents = () => {
     if (name === 'aadharNumber') {
       finalValue = formatAadhar(value);
     } else if (name === 'contact' || name === 'guardianContact') {
-      finalValue = formatContact(value);
+      finalValue = formatContact(value).slice(0, 10);
+    } else if (name === 'name') {
+      finalValue = value.replace(/[^a-zA-Z ]/g, '').slice(0, 30);
+    } else if (name === 'fatherName') {
+      finalValue = value.replace(/[^a-zA-Z ]/g, '').slice(0, 25);
+    } else if (name === 'schoolName') {
+      finalValue = value.slice(0, 30);
+    } else if (name === 'remarks') {
+      finalValue = value.slice(0, 100);
     }
 
     setFormData(prev => ({

@@ -573,7 +573,7 @@ const StudentManagement = () => {
             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiDownload className="mr-2" />
-            {isLoading ? 'Exporting...' : 'Export CSV'}
+            {isLoading ? 'Exporting...' : 'Export to Excel'}
           </button>
         </div>
       </div>

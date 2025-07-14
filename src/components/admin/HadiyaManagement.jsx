@@ -365,7 +365,7 @@ const HadiyaManagement = () => {
             disabled={loading || tutors.length === 0}
             className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center disabled:opacity-50"
           >
-            <FiDownload className="mr-2" /> Export CSV
+            <FiDownload className="mr-2" /> Export to Excel
           </button>
         </div>
       </div>

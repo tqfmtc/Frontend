@@ -353,18 +353,50 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Personal Information</div>
         <div style={{ marginBottom: 16 }}>
           <label>Name*</label>
-          <input name="name" value={localForm.name || ''} onChange={handleChange} required style={inputStyle} />
+          <input 
+            name="name" 
+            value={localForm.name || ''} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^a-zA-Z ]/g, '').slice(0, 25);
+              setLocalForm(prev => ({ ...prev, name: value }));
+            }} 
+            maxLength={25} 
+            required 
+            style={inputStyle} 
+          />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Email*</label>
-          <input name="email" value={localForm.email || ''} onChange={handleChange} type="email" required style={inputStyle} />
+          <input 
+            name="email" 
+            value={localForm.email || ''} 
+            onChange={e => {
+              let value = e.target.value.replace(/[^a-zA-Z0-9@._]/g, '').slice(0, 30);
+              // Enforce domain part (after @) max 15 chars
+              const atIdx = value.indexOf('@');
+              if (atIdx !== -1) {
+                const before = value.slice(0, atIdx + 1);
+                let after = value.slice(atIdx + 1, atIdx + 16); // max 15 chars after @
+                value = before + after;
+              }
+              setLocalForm(prev => ({ ...prev, email: value }));
+            }} 
+            maxLength={30} 
+            type="email" 
+            required 
+            style={inputStyle} 
+          />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Phone* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(This will be the tutor's login username)</span></label>
           <input 
             name="phone" 
             value={localForm.phone || ''} 
-            onChange={handleChange} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+              setLocalForm(prev => ({ ...prev, phone: value }));
+            }} 
+            maxLength={10} 
             required 
             placeholder="10 digits only" 
             style={inputStyle} 
@@ -379,24 +411,37 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           <input 
             name="password" 
             value={localForm.password || ''} 
-            onChange={handleChange} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+              setLocalForm(prev => ({ ...prev, password: value }));
+            }} 
+            maxLength={15} 
             type="text" 
             required 
             style={inputStyle} 
-            placeholder="Minimum 6 characters" 
+            placeholder="Maximum 15 characters, no special characters" 
           />
           <div style={{ backgroundColor: '#e6f7ff', padding: '8px 12px', borderRadius: '6px', marginTop: '6px', borderLeft: '4px solid #1890ff' }}>
             <span style={{ fontWeight: 600, color: '#222' }}>Note:</span> Use <code style={{ backgroundColor: '#f0f0f0', padding: '2px 4px', borderRadius: '3px' }}>tutor123</code> as the default password for all tutors.
           </div>
           <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
             <strong>Important:</strong> This password will be used by the tutor to login with their phone number.
-            Must be at least 6 characters long.
+            Maximum 10 characters, no special characters.
           </div>
           {errors.password && <div style={{ color: 'red', fontSize: 13 }}>{errors.password}</div>}
         </div>
         <div style={{ marginBottom: 0 }}>
           <label>Qualifications</label>
-          <input name="qualifications" value={localForm.qualifications || ''} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="qualifications" 
+            value={localForm.qualifications || ''} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^a-zA-Z0-9 ,.]/g, '').slice(0, 60);
+              setLocalForm(prev => ({ ...prev, qualifications: value }));
+            }} 
+            maxLength={60} 
+            style={inputStyle} 
+          />
         </div>
       </div>
 
@@ -525,7 +570,19 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya Information</div>
         <div style={{ marginBottom: 0 }}>
           <label>Assigned Hadiya Amount* (₹)</label>
-          <input name="assignedHadiyaAmount" value={localForm.assignedHadiyaAmount || ''} onChange={handleChange} type="number" required style={inputStyle} />
+          <input 
+            name="assignedHadiyaAmount" 
+            value={localForm.assignedHadiyaAmount || ''} 
+            onChange={e => {
+              let value = e.target.value.replace(/[^0-9]/g, '');
+              if (value !== '' && Number(value) > 5000) value = '5000';
+              setLocalForm(prev => ({ ...prev, assignedHadiyaAmount: value }));
+            }} 
+            type="number" 
+            required 
+            style={inputStyle} 
+            max={5000} 
+          />
           {errors.assignedHadiyaAmount && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedHadiyaAmount}</div>}
         </div>
       </div>
@@ -552,7 +609,11 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           <input 
             name="bankName" 
             value={localForm.bankName || ''} 
-            onChange={handleChange} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+              setLocalForm(prev => ({ ...prev, bankName: value }));
+            }} 
+            maxLength={25} 
             style={inputStyle} 
             placeholder="e.g., State Bank of India" 
           />
@@ -562,7 +623,11 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           <input 
             name="bankBranch" 
             value={localForm.bankBranch || ''} 
-            onChange={handleChange} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+              setLocalForm(prev => ({ ...prev, bankBranch: value }));
+            }} 
+            maxLength={25} 
             style={inputStyle} 
             placeholder="e.g., Hyderabad Main Branch" 
           />
@@ -572,7 +637,11 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           <input 
             name="accountNumber" 
             value={localForm.accountNumber || ''} 
-            onChange={handleChange} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 18);
+              setLocalForm(prev => ({ ...prev, accountNumber: value }));
+            }} 
+            maxLength={18} 
             style={inputStyle} 
             placeholder="11-18 digits" 
           />
@@ -586,8 +655,8 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           <input 
             name="ifscCode" 
             value={localForm.ifscCode || ''} 
-            onChange={(e) => {
-              const value = e.target.value.toUpperCase();
+            onChange={e => {
+              const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
               setLocalForm(prev => ({ ...prev, ifscCode: value }));
             }} 
             style={inputStyle} 

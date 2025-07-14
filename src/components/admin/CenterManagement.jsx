@@ -402,7 +402,11 @@ const CenterManagement = () => {
                       type="text"
                       name="name"
                       value={formData.name}
-                      onChange={handleChange}
+                      onChange={e => {
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+                        setFormData(prev => ({ ...prev, name: value }));
+                      }}
+                      maxLength={25}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
@@ -414,7 +418,11 @@ const CenterManagement = () => {
                       type="text"
                       name="area"
                       value={formData.area}
-                      onChange={handleChange}
+                      onChange={e => {
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50);
+                        setFormData(prev => ({ ...prev, area: value }));
+                      }}
+                      maxLength={50}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
@@ -426,7 +434,11 @@ const CenterManagement = () => {
                       type="text"
                       name="sadarName"
                       value={formData.sadarName}
-                      onChange={handleChange}
+                      onChange={e => {
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+                        setFormData(prev => ({ ...prev, sadarName: value }));
+                      }}
+                      maxLength={25}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
@@ -438,7 +450,11 @@ const CenterManagement = () => {
                       type="text"
                       name="sadarContact"
                       value={formData.sadarContact}
-                      onChange={handleChange}
+                      onChange={e => {
+                        const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                        setFormData(prev => ({ ...prev, sadarContact: value }));
+                      }}
+                      maxLength={10}
                       pattern="[0-9]{10}"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
@@ -661,19 +677,23 @@ const CenterManagement = () => {
                       <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={(e) => {
+                            if (isInactive) return;
                             e.stopPropagation();
                             handleEdit(center);
                           }}
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          className={`text-blue-600 transition-colors ${isInactive ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-800 cursor-pointer'}`}
+                          disabled={isInactive}
                         >
                           <FiEdit2 size={18} />
                         </button>
                         <button
                           onClick={(e) => {
+                            if (isInactive || isDeleting) return;
                             e.stopPropagation();
                             handleDelete(center);
                           }}
-                          className="text-red-600 hover:text-red-800 transition-colors"
+                          className={`text-red-600 transition-colors ${isInactive || isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-800 cursor-pointer'}`}
+                          disabled={isInactive || isDeleting}
                         >
                           <FiTrash2 size={18} />
                         </button>
