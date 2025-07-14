@@ -42,22 +42,6 @@ const subjectsList = [
   { value: 'Hindi', label: 'Hindi' },
 ];
 
-const inputStyle = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid #cbd5e1',
-  borderRadius: 6,
-  fontSize: 15,
-  marginTop: 4,
-  marginBottom: 4,
-  background: '#fff',
-  boxSizing: 'border-box',
-};
-const selectStyle = {
-  ...inputStyle,
-  minHeight: 38,
-};
-
 const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitting }) => {
   const navigate = useNavigate();
   const [centers, setCenters] = useState([]);
@@ -67,16 +51,16 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   useEffect(() => {
     async function fetchCenters() {
       const userStr = localStorage.getItem('userData');
-let token = null;
-if (userStr) {
-  try {
-    const userObj = JSON.parse(userStr);
-    token = userObj.token;
-  } catch (e) {
-    token = null;
-  }
-}
-console.log('[AddTutorForm] JWT token from localStorage:', token);
+      let token = null;
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr);
+          token = userObj.token;
+        } catch (e) {
+          token = null;
+        }
+      }
+      console.log('[AddTutorForm] JWT token from localStorage:', token);
       if (!token) {
         setCentersError(`You are not logged in or your session expired. Please log in as admin to load centers. [token: ${token}]`);
         setCenters([]);
@@ -116,16 +100,16 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     // Re-run fetchCenters
     (async () => {
       const userStr = localStorage.getItem('userData');
-let token = null;
-if (userStr) {
-  try {
-    const userObj = JSON.parse(userStr);
-    token = userObj.token;
-  } catch (e) {
-    token = null;
-  }
-}
-console.log('[AddTutorForm] JWT token from localStorage:', token);
+      let token = null;
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr);
+          token = userObj.token;
+        } catch (e) {
+          token = null;
+        }
+      }
+      console.log('[AddTutorForm] JWT token from localStorage:', token);
       if (!token) {
         setCentersError(`You are not logged in or your session expired. Please log in as admin to load centers. [token: ${token}]`);
         setCenters([]);
@@ -164,8 +148,96 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
   const [localForm, setLocalForm] = useState(safeInitialForm);
   const [errors, setErrors] = useState({});
 
-  // Handle input changes
+  // Email validation function
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return false;
+    
+    const [localPart, domain] = email.split('@');
+    const domainParts = domain.split('.');
+    
+    return (
+      localPart.length >= 1 && localPart.length <= 64 &&
+      domain.length >= 3 && domain.length <= 255 &&
+      domainParts[domainParts.length - 1].length >= 2 && 
+      domainParts[domainParts.length - 1].length <= 6
+    );
+  };
+
+  // Real-time validation state
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Handle input changes with validation
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    const errors = { ...validationErrors };
+    
+    // Clear previous error
+    delete errors[name];
+    
+    // Perform validation
+    if (name === 'name' && value.length > 60) {
+      errors[name] = 'Name must be 60 characters or less';
+    }
+    else if (name === 'email' && value) {
+      // Split email into parts as user types
+      const parts = value.split('@');
+      let newValue = value;
+      let errorMessage = '';
+      
+      if (parts.length > 0 && parts[0].length > 30) {
+        // Truncate the local part to 30 characters
+        parts[0] = parts[0].substring(0, 30);
+        newValue = parts.join('@');
+        errorMessage = 'Email prefix must be 30 characters or less';
+      }
+      
+      if (parts.length > 1) {
+        const domainParts = parts[1].split('.');
+        
+        if (domainParts.length > 0 && domainParts[0].length > 10) {
+          // Truncate the domain to 10 characters
+          domainParts[0] = domainParts[0].substring(0, 10);
+          parts[1] = domainParts.join('.');
+          newValue = parts.join('@');
+          errorMessage = 'Domain name must be 10 characters or less';
+        }
+        
+        if (domainParts.length > 1 && domainParts[1].length > 10) {
+          // Truncate the TLD to 10 characters
+          domainParts[1] = domainParts[1].substring(0, 10);
+          parts[1] = domainParts.join('.');
+          newValue = parts.join('@');
+          errorMessage = 'Domain extension must be 10 characters or less';
+        }
+      }
+      
+      // If we truncated, set the truncated value and show error
+      if (newValue !== value) {
+        setLocalForm(prev => ({ ...prev, [name]: newValue }));
+        setValidationErrors(prev => ({ ...prev, [name]: errorMessage }));
+        return; // Exit early to avoid the default setLocalForm
+      }
+    }
+    else if (name === 'password' && value.length > 10) {
+      errors[name] = 'Password must be 10 characters or less';
+    }
+    else if (name === 'assignedHadiyaAmount' && value > 10000) {
+      errors[name] = 'Hadiya cannot exceed ₹10,000';
+    }
+    else if (name === 'bankName' && value.length > 100) {
+      errors[name] = 'Bank name must be 100 characters or less';
+    }
+    else if (name === 'bankBranch' && value.length > 50) {
+      errors[name] = 'Bank branch must be 50 characters or less';
+    }
+    
+    setValidationErrors(errors);
+    setLocalForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle input changes
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     
     // Special handling for phone number - only allow digits and limit to 10
@@ -197,6 +269,7 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     // Default handling for other fields
     setLocalForm(prev => ({ ...prev, [name]: value }));
   };
+
   // Nested change handling has been simplified as documents are no longer part of the form
   // Bank details handling has been removed since it's no longer part of the form
   const handleSubjectsChange = (e) => {
@@ -332,349 +405,400 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
   };
 
   return (
-
-    <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: '0 auto', background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32 }}>
-      <h2 style={{ marginBottom: 32, fontWeight: 700, fontSize: 28, color: '#2563eb', textAlign: 'center' }}>Add Tutor</h2>
-      {/* Show error if centers cannot be loaded due to missing/expired token */}
-      {centersError && (
-        <div style={{ color: '#b91c1c', marginBottom: 20, background: '#fee2e2', padding: 12, borderRadius: 6, border: '1px solid #fca5a5' }}>
-          {centersError}
-          {centersError.toLowerCase().includes('log in') && (
-            <div style={{ marginTop: 8 }}>
-              <button type="button" onClick={handleRetryCenters} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 16px', cursor: 'pointer' }}>
-                Retry
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Personal Info */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Personal Information</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Name*</label>
-          <input 
-            name="name" 
-            value={localForm.name || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^a-zA-Z ]/g, '').slice(0, 25);
-              setLocalForm(prev => ({ ...prev, name: value }));
-            }} 
-            maxLength={25} 
-            required 
-            style={inputStyle} 
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Email*</label>
-          <input 
-            name="email" 
-            value={localForm.email || ''} 
-            onChange={e => {
-              let value = e.target.value.replace(/[^a-zA-Z0-9@._]/g, '').slice(0, 30);
-              // Enforce domain part (after @) max 10 chars
-              const atIdx = value.indexOf('@');
-              if (atIdx !== -1) {
-                const before = value.slice(0, atIdx + 1);
-                let after = value.slice(atIdx + 1, atIdx + 11); // max 10 chars after @
-                value = before + after;
-              }
-              setLocalForm(prev => ({ ...prev, email: value }));
-            }} 
-            maxLength={30} 
-            type="email" 
-            required 
-            style={inputStyle} 
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Phone* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(This will be the tutor's login username)</span></label>
-          <input 
-            name="phone" 
-            value={localForm.phone || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
-              setLocalForm(prev => ({ ...prev, phone: value }));
-            }} 
-            maxLength={10} 
-            required 
-            placeholder="10 digits only" 
-            style={inputStyle} 
-          />
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
-          </div>
-          {errors.phone && <div style={{ color: 'red', fontSize: 13 }}>{errors.phone}</div>}
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Login Password*</label>
-          <input 
-            name="password" 
-            value={localForm.password || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
-              setLocalForm(prev => ({ ...prev, password: value }));
-            }} 
-            maxLength={15} 
-            type="text" 
-            required 
-            style={inputStyle} 
-            placeholder="Maximum 15 characters, no special characters" 
-          />
-          <div style={{ backgroundColor: '#e6f7ff', padding: '8px 12px', borderRadius: '6px', marginTop: '6px', borderLeft: '4px solid #1890ff' }}>
-            <span style={{ fontWeight: 600, color: '#222' }}>Note:</span> Use <code style={{ backgroundColor: '#f0f0f0', padding: '2px 4px', borderRadius: '3px' }}>tutor123</code> as the default password for all tutors.
-          </div>
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            <strong>Important:</strong> This password will be used by the tutor to login with their phone number.
-            Maximum 10 characters, no special characters.
-          </div>
-          {errors.password && <div style={{ color: 'red', fontSize: 13 }}>{errors.password}</div>}
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Qualifications</label>
-          <input 
-            name="qualifications" 
-            value={localForm.qualifications || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^a-zA-Z0-9 ,.]/g, '').slice(0, 60);
-              setLocalForm(prev => ({ ...prev, qualifications: value }));
-            }} 
-            maxLength={60} 
-            style={inputStyle} 
-          />
-        </div>
-      </div>
-
-      {/* Center & Subjects */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Center Information</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Assigned Center* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Select the center to assign this tutor. Will be stored as ObjectId.)</span></label>
-          {centersError ? (
-            <div style={{ color: 'red', fontSize: 14, marginBottom: 8 }}>
-              {centersError}
-              <button type="button" onClick={handleRetryCenters} style={{ marginLeft: 16, padding: '2px 10px', borderRadius: 4, border: '1px solid #bbb', background: '#f4f4f4', cursor: 'pointer' }}>Retry</button>
-            </div>
-          ) : null}
-          <select name="assignedCenter" value={localForm.assignedCenter || ''} onChange={handleChange} required style={selectStyle} disabled={!!centersError}>
-            <option value="">Select Center</option>
-            {Array.isArray(centers) && centers.length === 0 && !centersError && (
-              <option value="">No centers available</option>
-            )}
-            {(Array.isArray(centers) ? centers : []).map(center => (
-              <option key={center && center._id ? center._id : ''} value={center && center._id ? center._id : ''}>{center && center.name ? center.name : ''}</option>
-            ))}
-          </select>
-          {errors.assignedCenter && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedCenter}</div>}
-        </div>
-
-      </div>
-
-      {/* Session Info */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Session Information</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Session Type*</label>
-          <select name="sessionType" value={localForm.sessionType || ''} onChange={handleChange} required style={selectStyle}>
-            <option value="">Select Session Type</option>
-            {sessionTypes.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Session Timing*</label>
-          <select name="sessionTiming" value={localForm.sessionTiming || ''} onChange={handleChange} required style={selectStyle}>
-            <option value="">Select Timing</option>
-            {sessionTimings.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Subjects */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Subjects*</div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Select Subject(s)* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Required. Click to select multiple)</span></label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-            {subjectsList.map(subject => (
-              <div 
-                key={subject.value} 
-                onClick={() => {
-                  // Always ensure currentSubjects is an array
-                  let currentSubjects = [];
-                  if (localForm.subjects) {
-                    currentSubjects = Array.isArray(localForm.subjects) 
-                      ? [...localForm.subjects] 
-                      : [localForm.subjects];
-                  }
-                  
-                  // Create new array based on selection/deselection
-                  const newSubjects = currentSubjects.includes(subject.value)
-                    ? currentSubjects.filter(s => s !== subject.value)
-                    : [...currentSubjects, subject.value];
-                    
-                  // Update state with new array
-                  setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
-                }}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  background: (() => {
-                    // Properly check if this subject is selected
-                    const subjectsArr = !localForm.subjects ? [] : 
-                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                    return subjectsArr.includes(subject.value) ? '#2563eb' : '#fff';
-                  })(),
-                  color: (() => {
-                    // Properly check if this subject is selected
-                    const subjectsArr = !localForm.subjects ? [] : 
-                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                    return subjectsArr.includes(subject.value) ? '#fff' : '#333';
-                  })(),
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: (() => {
-                    // Properly check if this subject is selected
-                    const subjectsArr = !localForm.subjects ? [] : 
-                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                    return subjectsArr.includes(subject.value) ? '600' : '400';
-                  })(),
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {subject.label}
+    <div className="max-w-4xl mx-auto p-4 bg-white rounded-xl shadow-lg border border-blue-100">
+      <h2 className="text-2xl font-bold text-white mb-4 pb-2 bg-gradient-to-r from-blue-500 to-blue-700 rounded-t-lg p-4 -mx-4 -mt-4">
+        Add New Tutor
+      </h2>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Main Grid - 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Personal Info */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Personal Information</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={localForm.name || ''}
+                onChange={handleChange}
+                name="name"
+                maxLength={60}
+                className={`w-full px-4 py-2 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                required
+              />
+              {validationErrors.name && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.name}</div>
+              )}
+              <div className="text-gray-500 text-sm mt-1">
+                {localForm.name ? localForm.name.length : 0}/60 characters
               </div>
-            ))}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="email"
+                value={localForm.email || ''}
+                onChange={handleChange}
+                name="email"
+                className={`w-full px-4 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                required
+              />
+              {validationErrors.email && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.email}</div>
+              )}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone <span className="text-red-600">*</span> <span className="text-gray-500">(This will be the tutor's login username)</span>
+              </label>
+              <input 
+                type="tel"
+                value={localForm.phone || ''}
+                onChange={handleInputChange}
+                name="phone"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                placeholder="1234567890"
+                required
+              />
+              <div className="text-gray-500 text-sm mt-1">
+                Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
+              </div>
+              {errors.phone && <div className="text-red-500 text-sm mt-1">{errors.phone}</div>}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Login Password <span className="text-red-600">*</span>
+              </label>
+              <input 
+                type="text"
+                value={localForm.password || ''}
+                onChange={handleChange}
+                name="password"
+                maxLength={10}
+                className={`w-full px-4 py-2 border ${validationErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                required
+              />
+              {validationErrors.password && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.password}</div>
+              )}
+              <div className="text-gray-500 text-sm mt-1">
+                <p><strong>Note:</strong> Use <code>tutor123</code> as the default password for all tutors.</p>
+                <p>{localForm.password ? localForm.password.length : 0}/10 characters</p>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Qualifications
+              </label>
+              <input
+                type="text"
+                value={localForm.qualifications || ''}
+                onChange={handleInputChange}
+                name="qualifications"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              />
+            </div>
           </div>
-          <div style={{ color: '#888', fontSize: 12, marginTop: 8 }}>
-            Selected subjects: {
-              (() => {
-                // Process subjects to ensure it's an array
-                const subjectsArr = !localForm.subjects ? [] :
-                  (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                  
-                return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
-              })()
-            }
+          
+          {/* Account Info */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Account Information</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned Center <span className="text-red-600">*</span> <span className="text-gray-500">(Select the center to assign this tutor.)</span>
+              </label>
+              {centersError ? (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                  <span className="block sm:inline">{centersError}</span>
+                  <div className="mt-2">
+                    <button type="button" onClick={handleRetryCenters} className="px-4 py-2 bg-red-500 hover:bg-red-700 text-white font-bold rounded">Retry</button>
+                  </div>
+                </div>
+              ) : null}
+              <select
+                value={localForm.assignedCenter || ''}
+                onChange={handleInputChange}
+                name="assignedCenter"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                required
+                disabled={!!centersError}
+              >
+                <option value="">Select Center</option>
+                {Array.isArray(centers) && centers.length === 0 && !centersError && (
+                  <option value="">No centers available</option>
+                )}
+                {(Array.isArray(centers) ? centers : []).map(center => (
+                  <option key={center && center._id ? center._id : ''} value={center && center._id ? center._id : ''}>{center && center.name ? center.name : ''}</option>
+                ))}
+              </select>
+              {errors.assignedCenter && <div className="text-red-500 text-sm mt-1">{errors.assignedCenter}</div>}
+            </div>
           </div>
-          {errors.subjects && <div style={{ color: 'red', fontSize: 13, marginTop: 5 }}>{errors.subjects}</div>}
-        </div>
-      </div>
-
-      {/* Hadiya */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya Information</div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Assigned Hadiya Amount* (₹)</label>
-          <input 
-            name="assignedHadiyaAmount" 
-            value={localForm.assignedHadiyaAmount || ''} 
-            onChange={e => {
-              let value = e.target.value.replace(/[^0-9]/g, '');
-              if (value !== '' && Number(value) > 5000) value = '5000';
-              setLocalForm(prev => ({ ...prev, assignedHadiyaAmount: value }));
-            }} 
-            type="number" 
-            required 
-            style={inputStyle} 
-            max={5000} 
-          />
-          {errors.assignedHadiyaAmount && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedHadiyaAmount}</div>}
-        </div>
-      </div>
-
-      {/* Bank Account Fields */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Identification & Bank Details</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Aadhar Number</label>
-          <input 
-            name="aadharNumber" 
-            value={localForm.aadharNumber || ''} 
-            onChange={handleChange} 
-            placeholder="XXXX XXXX XXXX" 
-            style={inputStyle} 
-          />
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            12 digits only. Spaces will be added automatically after every 4 digits.
+          
+          {/* Center & Subjects */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 md:col-span-2">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Center & Subjects</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                {/* Center selection */}
+              </div>
+              <div>
+                {/* Subjects selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Subject(s) <span className="text-gray-500">(Required. Click to select multiple)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {subjectsList.map(subject => (
+                      <div 
+                        key={subject.value} 
+                        onClick={() => {
+                          // Always ensure currentSubjects is an array
+                          let currentSubjects = [];
+                          if (localForm.subjects) {
+                            currentSubjects = Array.isArray(localForm.subjects) 
+                              ? [...localForm.subjects] 
+                              : [localForm.subjects];
+                          }
+                          
+                          // Create new array based on selection/deselection
+                          const newSubjects = currentSubjects.includes(subject.value)
+                            ? currentSubjects.filter(s => s !== subject.value)
+                            : [...currentSubjects, subject.value];
+                          
+                          // Update state with new array
+                          setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
+                        }}
+                        className={`px-4 py-2 rounded-lg cursor-pointer ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {subject.label}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-gray-500 text-sm mt-1">
+                    Selected subjects: {
+                      (() => {
+                        // Process subjects to ensure it's an array
+                        const subjectsArr = !localForm.subjects ? [] :
+                          (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                          
+                        return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
+                      })()
+                    }
+                  </div>
+                  {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
+                </div>
+              </div>
+            </div>
           </div>
-          {errors.aadharNumber && <div style={{ color: 'red', fontSize: 13 }}>{errors.aadharNumber}</div>}
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Bank Name</label>
-          <input 
-            name="bankName" 
-            value={localForm.bankName || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
-              setLocalForm(prev => ({ ...prev, bankName: value }));
-            }} 
-            maxLength={25} 
-            style={inputStyle} 
-            placeholder="e.g., State Bank of India" 
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Bank Branch</label>
-          <input 
-            name="bankBranch" 
-            value={localForm.bankBranch || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
-              setLocalForm(prev => ({ ...prev, bankBranch: value }));
-            }} 
-            maxLength={25} 
-            style={inputStyle} 
-            placeholder="e.g., Hyderabad Main Branch" 
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Account Number</label>
-          <input 
-            name="accountNumber" 
-            value={localForm.accountNumber || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 18);
-              setLocalForm(prev => ({ ...prev, accountNumber: value }));
-            }} 
-            maxLength={18} 
-            style={inputStyle} 
-            placeholder="11-18 digits" 
-          />
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            Account number should be between 11-18 digits.
+          
+          {/* Session Info */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Session Information</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Session Type <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={localForm.sessionType || ''}
+                onChange={handleInputChange}
+                name="sessionType"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                required
+              >
+                <option value="">Select Session Type</option>
+                {sessionTypes.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Session Timing <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={localForm.sessionTiming || ''}
+                onChange={handleInputChange}
+                name="sessionTiming"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                required
+              >
+                <option value="">Select Timing</option>
+                {sessionTimings.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          {errors.accountNumber && <div style={{ color: 'red', fontSize: 13 }}>{errors.accountNumber}</div>}
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label>IFSC Code</label>
-          <input 
-            name="ifscCode" 
-            value={localForm.ifscCode || ''} 
-            onChange={e => {
-              const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
-              setLocalForm(prev => ({ ...prev, ifscCode: value }));
-            }} 
-            style={inputStyle} 
-            placeholder="e.g., SBIN0123456" 
-            maxLength={11}
-          />
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
+          
+          {/* Hadiya */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Hadiya Information</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned Hadiya Amount <span className="text-red-600">*</span> (₹)
+              </label>
+              <input
+                type="number"
+                value={localForm.assignedHadiyaAmount || ''}
+                onChange={handleChange}
+                name="assignedHadiyaAmount"
+                max={10000}
+                className={`w-full px-4 py-2 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                required
+              />
+              {validationErrors.assignedHadiyaAmount && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.assignedHadiyaAmount}</div>
+              )}
+            </div>
           </div>
-          {errors.ifscCode && <div style={{ color: 'red', fontSize: 13 }}>{errors.ifscCode}</div>}
+          
+          {/* Bank Details */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 md:col-span-2">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Bank Details</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Aadhar Number
+                </label>
+                <input 
+                  type="text"
+                  value={localForm.aadharNumber || ''}
+                  onChange={handleInputChange}
+                  name="aadharNumber"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="XXXX XXXX XXXX"
+                />
+                <div className="text-gray-500 text-sm mt-1">
+                  12 digits only. Spaces will be added automatically after every 4 digits.
+                </div>
+                {errors.aadharNumber && <div className="text-red-500 text-sm mt-1">{errors.aadharNumber}</div>}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Bank Name
+                </label>
+                <input 
+                  type="text"
+                  value={localForm.bankName || ''}
+                  onChange={handleChange}
+                  name="bankName"
+                  maxLength={100}
+                  className={`w-full px-4 py-2 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  placeholder="e.g., State Bank of India"
+                />
+                {validationErrors.bankName && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.bankName}</div>
+                )}
+                <div className="text-gray-500 text-sm mt-1">
+                  {localForm.bankName ? localForm.bankName.length : 0}/100 characters
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Bank Branch
+                </label>
+                <input 
+                  type="text"
+                  value={localForm.bankBranch || ''}
+                  onChange={handleChange}
+                  name="bankBranch"
+                  maxLength={50}
+                  className={`w-full px-4 py-2 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  placeholder="e.g., Hyderabad Main Branch"
+                />
+                {validationErrors.bankBranch && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.bankBranch}</div>
+                )}
+                <div className="text-gray-500 text-sm mt-1">
+                  {localForm.bankBranch ? localForm.bankBranch.length : 0}/50 characters
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Account Number
+                </label>
+                <input 
+                  type="text"
+                  value={localForm.accountNumber || ''}
+                  onChange={handleInputChange}
+                  name="accountNumber"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="11-18 digits"
+                />
+                <div className="text-gray-500 text-sm mt-1">
+                  Account number should be between 11-18 digits.
+                </div>
+                {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  IFSC Code
+                </label>
+                <input 
+                  type="text"
+                  value={localForm.ifscCode || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    setLocalForm(prev => ({ ...prev, ifscCode: value }));
+                  }}
+                  name="ifscCode"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="e.g., SBIN0123456"
+                  maxLength={11}
+                />
+                <div className="text-gray-500 text-sm mt-1">
+                  Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
+                </div>
+                {errors.ifscCode && <div className="text-red-500 text-sm mt-1">{errors.ifscCode}</div>}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
-        <button type="submit" disabled={isSubmitting} style={{ padding: '12px 48px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 20, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.10)' }}>
-          {isSubmitting ? 'Submitting...' : 'Add Tutor'}
-        </button>
-      </div>
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-3">
+          <button
+            type="button"
+            onClick={() => navigate('/admin-dashboard', { state: { activeTab: 'tutors' } })}
+            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-sm shadow"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-sm shadow hover:shadow-md"
+          >
+            {isSubmitting ? 'Submitting...' : 'Add Tutor'}
+          </button>
+        </div>
+      </form>
       
       {/* Success Popover */}
       <Popover
@@ -682,7 +806,6 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         onClose={() => {
           setShowSuccessPopover(false);
           setLocalForm({ ...initialState }); // Reset form on success
-          // Redirect to admin dashboard with tab parameter to show tutor management
           navigate('/admin-dashboard', { state: { activeTab: 'tutors' } }); // Use state to indicate tutor tab
         }}
         title="Success!"
@@ -696,7 +819,7 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         setLocalForm({ ...initialState }); // Reset form on success
         navigate('/admin-dashboard', { state: { activeTab: 'tutors' } }); // Use state to indicate tutor tab
       }, 1500)}
-    </form>
+    </div>
   );
 };
 
