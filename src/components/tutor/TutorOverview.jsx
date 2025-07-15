@@ -7,6 +7,7 @@ import L from 'leaflet'
 import useGet from '../CustomHooks/useGet'
 import usePost from '../CustomHooks/usePost'
 import useTodayAttendance from './useTodayAttendance'
+import axios from 'axios';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -31,14 +32,37 @@ const createCustomIcon = (color) => {
 const redIcon = createCustomIcon('red')
 const blueIcon = createCustomIcon('blue')
 
+const fetchLocationFallback = async () => {
+  try {
+    const response = await axios.get(`https://api.opencagedata.com/geocode/v1/json?q=YOUR_QUERY&key=YOUR_API_KEY`);
+    const { results } = response.data;
+    if (results && results.length > 0) {
+      const { geometry } = results[0];
+      return { lat: geometry.lat, lng: geometry.lng };
+    }
+  } catch (error) {
+    console.error('OpenCage API error:', error);
+  }
+  return null;
+};
+
 const LocationMarker = ({ onLocationUpdate }) => {
   const [position, setPosition] = useState(null)
   const map = useMap()
   const watchIdRef = useRef(null)
   const hasAnimatedRef = useRef(false)
+  const [locationError, setLocationError] = useState(null)
 
   useEffect(() => {
     if (!navigator.geolocation) {
+      fetchLocationFallback().then((fallbackPosition) => {
+        if (fallbackPosition) {
+          setPosition(fallbackPosition);
+          onLocationUpdate(fallbackPosition);
+        } else {
+          setLocationError('Unable to determine location.');
+        }
+      });
       return;
     }
 
@@ -54,8 +78,34 @@ const LocationMarker = ({ onLocationUpdate }) => {
       }
     };
 
-    const handleError = () => {
-      // No error handling as per new requirements
+    const handleError = (error) => {
+      let message = '';
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          message = 'User denied the request for Geolocation.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          message = 'Location information is unavailable.';
+          break;
+        case error.TIMEOUT:
+          message = 'The request to get user location timed out.';
+          break;
+        case error.UNKNOWN_ERROR:
+        default:
+          message = 'An unknown error occurred while retrieving location.';
+          break;
+      }
+      setLocationError(message);
+
+      // Fallback to OpenCage API
+      fetchLocationFallback().then((fallbackPosition) => {
+        if (fallbackPosition) {
+          setPosition(fallbackPosition);
+          onLocationUpdate(fallbackPosition);
+        } else {
+          setLocationError('Unable to determine location.');
+        }
+      });
     };
 
     // Start watching position
