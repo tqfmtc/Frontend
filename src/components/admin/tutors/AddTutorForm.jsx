@@ -7,6 +7,7 @@ const initialState = {
   email: '',
   phone: '',
   password: '',
+  address: '',
   qualifications: '',
   assignedCenter: '',
   subjects: [], // Always initialize as an array
@@ -45,8 +46,11 @@ const subjectsList = [
 const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitting }) => {
   const navigate = useNavigate();
   const [centers, setCenters] = useState([]);
+  const [centerQuery, setCenterQuery] = useState('');
+  const [showCenterDropdown, setShowCenterDropdown] = useState(false);
   const [centersError, setCentersError] = useState(null);
   const [showSuccessPopover, setShowSuccessPopover] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     async function fetchCenters() {
@@ -147,6 +151,14 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   };
   const [localForm, setLocalForm] = useState(safeInitialForm);
   const [errors, setErrors] = useState({});
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false,
+  });
 
   // Email validation function
   const isValidEmail = (email) => {
@@ -170,70 +182,146 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   // Handle input changes with validation
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const errors = { ...validationErrors };
-    
-    // Clear previous error
+    let newValue = value;
+
+    if (name === 'address') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, address: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
+      }
+    } else if (name === 'qualifications') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, qualifications: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
+      }
+    } else if (name === 'name') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z'\s]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, name: 'Only letters, spaces, and apostrophes are allowed' }));
+      }
+    } else if (name === 'bankName') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z\s]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, bankName: 'Only letters and spaces are allowed' }));
+      }
+    } else if (name === 'bankBranch') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z\s]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, bankBranch: 'Only letters and spaces are allowed' }));
+      }
+    }
+
+    setLocalForm(prev => ({ ...prev, [name]: newValue }));
+
+    let errors = { ...validationErrors };
     delete errors[name];
-    
-    // Perform validation
-    if (name === 'name' && value.length > 60) {
+
+    // Clear error when user starts typing again
+    if (errors[name]) {
+      delete errors[name];
+      setValidationErrors(errors);
+    }
+
+    // Email validation
+    if (name === 'email') {
+      if (!isValidEmail(value)) {
+        errors[name] = 'Invalid email address';
+      }
+    }
+    // Password strength validation
+    else if (name === 'password') {
+      const password = value;
+      setPasswordStrength({
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      });
+
+      if (value.length > 10) {
+        errors[name] = 'Password must be 10 characters or less';
+      } else if (value.length > 0 && value.length < 8) {
+        errors[name] = 'Password must be at least 8 characters';
+      }
+    }
+    else if (name === 'name' && value.length > 60) {
       errors[name] = 'Name must be 60 characters or less';
     }
-    else if (name === 'email' && value) {
-      // Split email into parts as user types
-      const parts = value.split('@');
-      let newValue = value;
-      let errorMessage = '';
-      
-      if (parts.length > 0 && parts[0].length > 30) {
-        // Truncate the local part to 30 characters
-        parts[0] = parts[0].substring(0, 30);
-        newValue = parts.join('@');
-        errorMessage = 'Email prefix must be 30 characters or less';
-      }
-      
-      if (parts.length > 1) {
-        const domainParts = parts[1].split('.');
-        
-        if (domainParts.length > 0 && domainParts[0].length > 10) {
-          // Truncate the domain to 10 characters
-          domainParts[0] = domainParts[0].substring(0, 10);
-          parts[1] = domainParts.join('.');
-          newValue = parts.join('@');
-          errorMessage = 'Domain name must be 10 characters or less';
-        }
-        
-        if (domainParts.length > 1 && domainParts[1].length > 10) {
-          // Truncate the TLD to 10 characters
-          domainParts[1] = domainParts[1].substring(0, 10);
-          parts[1] = domainParts.join('.');
-          newValue = parts.join('@');
-          errorMessage = 'Domain extension must be 10 characters or less';
-        }
-      }
-      
-      // If we truncated, set the truncated value and show error
-      if (newValue !== value) {
-        setLocalForm(prev => ({ ...prev, [name]: newValue }));
-        setValidationErrors(prev => ({ ...prev, [name]: errorMessage }));
-        return; // Exit early to avoid the default setLocalForm
+    else if (name === 'address') {
+      if (newValue.length > 60) {
+        errors[name] = 'Address must be 60 characters or less';
       }
     }
-    else if (name === 'password' && value.length > 10) {
-      errors[name] = 'Password must be 10 characters or less';
+    else if (name === 'assignedHadiyaAmount') {
+      // Convert to string to handle digit limit
+      const stringValue = String(value);
+      let numericValue = stringValue.replace(/[^0-9]/g, '');
+      
+      // Limit to 6 digits
+      if (numericValue.length > 6) {
+        numericValue = numericValue.substring(0, 6);
+        errors[name] = 'Hadiya cannot exceed 6 digits';
+      }
+      
+      const num = numericValue ? parseInt(numericValue, 10) : '';
+      
+      if (num > 100000) {
+        errors[name] = 'Hadiya cannot exceed ₹100,000';
+      }
+      
+      setLocalForm(prev => ({ ...prev, [name]: num }));
+      setValidationErrors(errors);
+      return;
     }
-    else if (name === 'assignedHadiyaAmount' && value > 10000) {
-      errors[name] = 'Hadiya cannot exceed ₹10,000';
+    else if (name === 'bankName' && value.length > 30) {
+      errors[name] = 'Bank name must be 30 characters or less';
     }
-    else if (name === 'bankName' && value.length > 100) {
-      errors[name] = 'Bank name must be 100 characters or less';
+    else if (name === 'bankBranch' && value.length > 30) {
+      errors[name] = 'Bank branch must be 30 characters or less';
     }
-    else if (name === 'bankBranch' && value.length > 50) {
-      errors[name] = 'Bank branch must be 50 characters or less';
+    else if (name === 'accountNumber') {
+      const originalValue = value;
+      const digitsOnly = originalValue.replace(/\D/g, '');
+      if (digitsOnly.length <= 18) {
+        setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+      }
+      // Set error if non-digit characters were removed
+      if (digitsOnly !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, accountNumber: 'Only digits are allowed' }));
+      } else {
+        // Clear error if no non-digit characters were present
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.accountNumber;
+          return newErrors;
+        });
+      }
+      return;
+    }
+    else if (name === 'ifscCode') {
+      // Convert to uppercase and remove any spaces
+      let cleanedValue = value.toUpperCase().replace(/\s/g, '');
+      
+      // If we have exactly 4 non-zero characters, automatically add a zero
+      if (cleanedValue.length === 4 && cleanedValue !== '') {
+        cleanedValue = cleanedValue + '0';
+      }
+      
+      // Limit to 11 characters (4 letters + 1 zero + 6 alphanumeric)
+      if (cleanedValue.length <= 11) {
+        setLocalForm(prev => ({ ...prev, [name]: cleanedValue }));
+      }
+      
+      return;
     }
     
     setValidationErrors(errors);
-    setLocalForm(prev => ({ ...prev, [name]: value }));
   };
 
   // Handle input changes
@@ -245,6 +333,27 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       const digitsOnly = value.replace(/\D/g, '');
       if (digitsOnly.length <= 10) {
         setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+      }
+      return;
+    }
+    
+    // Special handling for account number - only allow digits and limit to 18
+    if (name === 'accountNumber') {
+      const originalValue = value;
+      const digitsOnly = originalValue.replace(/\D/g, '');
+      if (digitsOnly.length <= 18) {
+        setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+      }
+      // Set error if non-digit characters were removed
+      if (digitsOnly !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, accountNumber: 'Only digits are allowed' }));
+      } else {
+        // Clear error if no non-digit characters were present
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.accountNumber;
+          return newErrors;
+        });
       }
       return;
     }
@@ -353,11 +462,29 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrors({});
+    
+    // Check password strength if password is provided and not empty
+    if (localForm.password && localForm.password.trim() !== '') {
+      const isPasswordStrong = (
+        passwordStrength.length &&
+        passwordStrength.uppercase &&
+        passwordStrength.lowercase &&
+        passwordStrength.number &&
+        passwordStrength.specialChar
+      );
+      
+      if (!isPasswordStrong) {
+        // Show error and prevent submission
+        setValidationErrors(prev => ({
+          ...prev,
+          password: 'Password does not meet strength requirements'
+        }));
+        return;
+      }
+    }
     
     // Adding extensive debug logs to trace the subjects field
     console.log('SUBMIT - Initial form state:', { 
-      hasSubjects: !!localForm.subjects,
       subjects: localForm.subjects,
       isArray: Array.isArray(localForm.subjects),
       type: typeof localForm.subjects
@@ -383,6 +510,13 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       // If not an array, convert to array with single element
       formToSubmit.subjects = [formToSubmit.subjects];
       console.log('Converted single subject to array:', formToSubmit.subjects);
+      
+      // Update the form with the array version
+      setLocalForm(prev => {
+        const updated = { ...prev, subjects: formToSubmit.subjects };
+        console.log('Updated form with array subjects:', updated.subjects);
+        return updated;
+      });
     } else {
       // Already an array, just log it
       console.log('Subjects already an array:', formToSubmit.subjects);
@@ -396,13 +530,33 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
     
     // Submit the form with processed data
     try {
+      setIsFormSubmitting(true);
       await onSubmit(formToSubmit);
       setShowSuccessPopover(true);
+      
+      // Reset password strength indicators
+      setPasswordStrength({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        specialChar: false,
+      });
     } catch (error) {
       console.error('Error adding tutor:', error);
       // Handle error if needed
+    } finally {
+      setIsFormSubmitting(false);
     }
   };
+
+  const filteredCenters = centers.filter(center => {
+    const lowerQuery = centerQuery.toLowerCase();
+    return (
+      center.name.toLowerCase().includes(lowerQuery) ||
+      (center.area && center.area.toLowerCase().includes(lowerQuery))
+    );
+  });
 
   return (
     <div className="max-w-4xl mx-auto p-4 bg-white rounded-xl shadow-lg border border-blue-100">
@@ -412,10 +566,10 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Main Grid - 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
           
           {/* Personal Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
             <h3 className="text-lg font-semibold text-blue-800 mb-3">Personal Information</h3>
             
             <div className="mb-4">
@@ -426,10 +580,15 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 type="text"
                 value={localForm.name || ''}
                 onChange={handleChange}
+                onKeyPress={(e) => {
+                  const key = e.key;
+                  if (!/^[a-zA-Z'\s]$/.test(key)) {
+                    e.preventDefault();
+                    setValidationErrors(prev => ({ ...prev, name: `Character '${key}' is not allowed. Only letters, spaces, and apostrophes are allowed.` }));
+                  }
+                }}
                 name="name"
-                maxLength={60}
                 className={`w-full px-4 py-2 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                required
               />
               {validationErrors.name && (
                 <div className="text-red-500 text-sm mt-1">{validationErrors.name}</div>
@@ -477,23 +636,83 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={localForm.address || ''}
+                onChange={(e) => handleChange(e)}
+                onKeyPress={(e) => {
+                  const key = e.key;
+                  if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                    e.preventDefault();
+                    setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                  }
+                }}
+                name="address"
+                className={`mt-1 block w-full px-3 py-2 border ${validationErrors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                rows="3"
+                required
+                maxLength={60}
+              />
+              {validationErrors.address && <div className="text-red-500 text-sm mt-1">{validationErrors.address}</div>}
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Login Password <span className="text-red-600">*</span>
               </label>
-              <input 
-                type="text"
-                value={localForm.password || ''}
-                onChange={handleChange}
-                name="password"
-                maxLength={10}
-                className={`w-full px-4 py-2 border ${validationErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={localForm.password || ''}
+                  onChange={handleChange}
+                  name="password"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="Enter password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  )}
+                </button>
+              </div>
               {validationErrors.password && (
                 <div className="text-red-500 text-sm mt-1">{validationErrors.password}</div>
               )}
               <div className="text-gray-500 text-sm mt-1">
-                <p><strong>Note:</strong> Use <code>tutor123</code> as the default password for all tutors.</p>
                 <p>{localForm.password ? localForm.password.length : 0}/10 characters</p>
+              </div>
+              {/* Password strength indicator */}
+              <div className="mt-2">
+                <p className="text-sm font-medium text-gray-700">Password must contain:</p>
+                <ul className="text-sm text-gray-600">
+                  <li className={passwordStrength.length ? 'text-green-500' : 'text-gray-500'}>
+                    {passwordStrength.length ? '✓' : '✗'} At least 8 characters
+                  </li>
+                  <li className={passwordStrength.uppercase ? 'text-green-500' : 'text-gray-500'}>
+                    {passwordStrength.uppercase ? '✓' : '✗'} At least one uppercase letter
+                  </li>
+                  <li className={passwordStrength.lowercase ? 'text-green-500' : 'text-gray-500'}>
+                    {passwordStrength.lowercase ? '✓' : '✗'} At least one lowercase letter
+                  </li>
+                  <li className={passwordStrength.number ? 'text-green-500' : 'text-gray-500'}>
+                    {passwordStrength.number ? '✓' : '✗'} At least one number
+                  </li>
+                  <li className={passwordStrength.specialChar ? 'text-green-500' : 'text-gray-500'}>
+                    {passwordStrength.specialChar ? '✓' : '✗'} At least one special character
+                  </li>
+                </ul>
               </div>
             </div>
             
@@ -504,18 +723,28 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
               <input
                 type="text"
                 value={localForm.qualifications || ''}
-                onChange={handleInputChange}
+                onChange={handleChange}
+                onKeyPress={(e) => {
+                  const key = e.key;
+                  if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                    e.preventDefault();
+                    setValidationErrors(prev => ({ ...prev, qualifications: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                  }
+                }}
                 name="qualifications"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className={`w-full px-4 py-2 border ${validationErrors.qualifications ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
               />
+              {validationErrors.qualifications && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.qualifications}</div>
+              )}
             </div>
           </div>
           
           {/* Account Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Account Information</h3>
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Center Information</h3>
             
-            <div className="mb-4">
+            <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Assigned Center <span className="text-red-600">*</span> <span className="text-gray-500">(Select the center to assign this tutor.)</span>
               </label>
@@ -527,86 +756,103 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   </div>
                 </div>
               ) : null}
-              <select
-                value={localForm.assignedCenter || ''}
-                onChange={handleInputChange}
-                name="assignedCenter"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                required
-                disabled={!!centersError}
-              >
-                <option value="">Select Center</option>
-                {Array.isArray(centers) && centers.length === 0 && !centersError && (
-                  <option value="">No centers available</option>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={centerQuery}
+                  onChange={(e) => setCenterQuery(e.target.value)}
+                  onFocus={() => setShowCenterDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
+                  placeholder="Search for a center"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                />
+                {showCenterDropdown && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-auto">
+                    {filteredCenters.map(center => (
+                      <div 
+                        key={center._id}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={() => { // use onMouseDown to prevent onBlur from closing immediately
+                          setLocalForm(prev => ({ ...prev, assignedCenter: center.name }));
+                          setCenterQuery(center.name);
+                          setShowCenterDropdown(false);
+                        }}
+                      >
+                        {center.name}, {center.area}
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {(Array.isArray(centers) ? centers : []).map(center => (
-                  <option key={center && center._id ? center._id : ''} value={center && center._id ? center._id : ''}>{center && center.name ? center.name : ''}</option>
-                ))}
-              </select>
+              </div>
               {errors.assignedCenter && <div className="text-red-500 text-sm mt-1">{errors.assignedCenter}</div>}
             </div>
           </div>
           
           {/* Center & Subjects */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 md:col-span-2">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Center & Subjects</h3>
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start md:col-span-2">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Subjects</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                {/* Center selection */}
-              </div>
-              <div>
-                {/* Subjects selection */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Subject(s) <span className="text-gray-500">(Required. Click to select multiple)</span>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Subject(s) <span className="text-gray-500">(Required. Click to select multiple)</span>
+              </label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {subjectsList.map(subject => (
+                  <label 
+                    key={subject.value} 
+                    className={`px-4 py-2 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                    tabIndex="0"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.currentTarget.querySelector('input[type="checkbox"]').click();
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      tabIndex="-1"
+                      checked={localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value)}
+                      onChange={() => {
+                        // Always ensure currentSubjects is an array
+                        let currentSubjects = [];
+                        if (localForm.subjects) {
+                          currentSubjects = Array.isArray(localForm.subjects) 
+                            ? [...localForm.subjects] 
+                            : [localForm.subjects];
+                        }
+                        
+                        // Create new array based on selection/deselection
+                        const newSubjects = currentSubjects.includes(subject.value)
+                          ? currentSubjects.filter(s => s !== subject.value)
+                          : [...currentSubjects, subject.value];
+                        
+                        // Update state with new array
+                        setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
+                      }}
+                    />
+                    {subject.label}
                   </label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {subjectsList.map(subject => (
-                      <div 
-                        key={subject.value} 
-                        onClick={() => {
-                          // Always ensure currentSubjects is an array
-                          let currentSubjects = [];
-                          if (localForm.subjects) {
-                            currentSubjects = Array.isArray(localForm.subjects) 
-                              ? [...localForm.subjects] 
-                              : [localForm.subjects];
-                          }
-                          
-                          // Create new array based on selection/deselection
-                          const newSubjects = currentSubjects.includes(subject.value)
-                            ? currentSubjects.filter(s => s !== subject.value)
-                            : [...currentSubjects, subject.value];
-                          
-                          // Update state with new array
-                          setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
-                        }}
-                        className={`px-4 py-2 rounded-lg cursor-pointer ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
-                      >
-                        {subject.label}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-gray-500 text-sm mt-1">
-                    Selected subjects: {
-                      (() => {
-                        // Process subjects to ensure it's an array
-                        const subjectsArr = !localForm.subjects ? [] :
-                          (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                          
-                        return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
-                      })()
-                    }
-                  </div>
-                  {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
-                </div>
+                ))}
               </div>
+              <div className="text-gray-500 text-sm mt-1">
+                Selected subjects: {
+                  (() => {
+                    // Process subjects to ensure it's an array
+                    const subjectsArr = !localForm.subjects ? [] :
+                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                      
+                    return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
+                  })()
+                }
+              </div>
+              {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
             </div>
           </div>
           
           {/* Session Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
             <h3 className="text-lg font-semibold text-blue-800 mb-3">Session Information</h3>
             
             <div className="mb-4">
@@ -647,7 +893,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
           </div>
           
           {/* Hadiya */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
             <h3 className="text-lg font-semibold text-blue-800 mb-3">Hadiya Information</h3>
             
             <div className="mb-4">
@@ -659,7 +905,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 value={localForm.assignedHadiyaAmount || ''}
                 onChange={handleChange}
                 name="assignedHadiyaAmount"
-                max={10000}
+                max={100000}
                 className={`w-full px-4 py-2 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
                 required
               />
@@ -670,10 +916,10 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
           </div>
           
           {/* Bank Details */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 md:col-span-2">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start md:col-span-2">
             <h3 className="text-lg font-semibold text-blue-800 mb-3">Bank Details</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Aadhar Number
@@ -700,8 +946,15 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   type="text"
                   value={localForm.bankName || ''}
                   onChange={handleChange}
+                  onKeyPress={(e) => {
+                    const key = e.key;
+                    if (!/^[a-zA-Z'\s]$/.test(key)) {
+                      e.preventDefault();
+                      setValidationErrors(prev => ({ ...prev, bankName: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
+                    }
+                  }}
                   name="bankName"
-                  maxLength={100}
+                  maxLength={30}
                   className={`w-full px-4 py-2 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
                   placeholder="e.g., State Bank of India"
                 />
@@ -709,12 +962,12 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   <div className="text-red-500 text-sm mt-1">{validationErrors.bankName}</div>
                 )}
                 <div className="text-gray-500 text-sm mt-1">
-                  {localForm.bankName ? localForm.bankName.length : 0}/100 characters
+                  {localForm.bankName ? localForm.bankName.length : 0}/30 characters
                 </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Bank Branch
@@ -723,16 +976,23 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   type="text"
                   value={localForm.bankBranch || ''}
                   onChange={handleChange}
+                  onKeyPress={(e) => {
+                    const key = e.key;
+                    if (!/^[a-zA-Z'\s]$/.test(key)) {
+                      e.preventDefault();
+                      setValidationErrors(prev => ({ ...prev, bankBranch: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
+                    }
+                  }}
                   name="bankBranch"
-                  maxLength={50}
+                  maxLength={30}
                   className={`w-full px-4 py-2 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                  placeholder="e.g., Hyderabad Main Branch"
+                  placeholder="e.g., Main Branch"
                 />
                 {validationErrors.bankBranch && (
                   <div className="text-red-500 text-sm mt-1">{validationErrors.bankBranch}</div>
                 )}
                 <div className="text-gray-500 text-sm mt-1">
-                  {localForm.bankBranch ? localForm.bankBranch.length : 0}/50 characters
+                  {localForm.bankBranch ? localForm.bankBranch.length : 0}/30 characters
                 </div>
               </div>
               
@@ -752,10 +1012,13 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   Account number should be between 11-18 digits.
                 </div>
                 {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
+                {validationErrors.accountNumber && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.accountNumber}</div>
+                )}
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   IFSC Code
@@ -781,6 +1044,18 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
           </div>
         </div>
         
+        {/* Form error summary */}
+        {Object.keys(validationErrors).length > 0 && (
+          <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-lg">
+            <p className="font-medium">Please fix the following errors:</p>
+            <ul className="list-disc pl-5 mt-2">
+              {Object.entries(validationErrors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
         {/* Action Buttons */}
         <div className="flex justify-end space-x-3 pt-3">
           <button
@@ -792,10 +1067,10 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isFormSubmitting}
             className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-sm shadow hover:shadow-md"
           >
-            {isSubmitting ? 'Submitting...' : 'Add Tutor'}
+            {isSubmitting || isFormSubmitting ? 'Submitting...' : 'Add Tutor'}
           </button>
         </div>
       </form>
@@ -809,7 +1084,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
           navigate('/admin-dashboard', { state: { activeTab: 'tutors' } }); // Use state to indicate tutor tab
         }}
         title="Success!"
-        message="Tutor has been added successfully. Default password: tutor123"
+        message="Tutor has been added successfully"
         type="success"
       />
       
