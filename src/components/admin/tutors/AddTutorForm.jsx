@@ -568,478 +568,490 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
         {/* Main Grid - 2 columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
           
-          {/* Personal Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Personal Information</h3>
+          {/* Left Column */}
+          <div className="space-y-3">
+            
+            {/* Personal Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Personal Information</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={localForm.name || ''}
+                  onChange={handleChange}
+                  onKeyPress={(e) => {
+                    const key = e.key;
+                    if (!/^[a-zA-Z'\s]$/.test(key)) {
+                      e.preventDefault();
+                      setValidationErrors(prev => ({ ...prev, name: `Character '${key}' is not allowed. Only letters, spaces, and apostrophes are allowed.` }));
+                    }
+                  }}
+                  name="name"
+                  className={`w-full px-4 py-2 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                />
+                {validationErrors.name && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.name}</div>
+                )}
+                <div className="text-gray-500 text-sm mt-1">
+                  {localForm.name ? localForm.name.length : 0}/60 characters
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={localForm.email || ''}
+                  onChange={handleChange}
+                  name="email"
+                  className={`w-full px-4 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  required
+                />
+                {validationErrors.email && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.email}</div>
+                )}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone <span className="text-red-600">*</span> <span className="text-gray-500">(This will be the tutor's login username)</span>
+                </label>
+                <input 
+                  type="tel"
+                  value={localForm.phone || ''}
+                  onChange={handleInputChange}
+                  name="phone"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="1234567890"
+                  required
+                />
+                <div className="text-gray-500 text-sm mt-1">
+                  Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
+                </div>
+                {errors.phone && <div className="text-red-500 text-sm mt-1">{errors.phone}</div>}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  value={localForm.address || ''}
+                  onChange={(e) => handleChange(e)}
+                  onKeyPress={(e) => {
+                    const key = e.key;
+                    if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                      e.preventDefault();
+                      setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                    }
+                  }}
+                  name="address"
+                  className={`mt-1 block w-full px-3 py-2 border ${validationErrors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  rows="3"
+                  required
+                  maxLength={60}
+                />
+                {validationErrors.address && <div className="text-red-500 text-sm mt-1">{validationErrors.address}</div>}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Login Password <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={localForm.password || ''}
+                    onChange={handleChange}
+                    name="password"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    placeholder="Enter password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {validationErrors.password && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.password}</div>
+                )}
+                <div className="text-gray-500 text-sm mt-1">
+                  <p>{localForm.password ? localForm.password.length : 0}/10 characters</p>
+                </div>
+                {/* Password strength indicator */}
+                <div className="mt-2">
+                  <p className="text-sm font-medium text-gray-700">Password must contain:</p>
+                  <ul className="text-sm text-gray-600">
+                    <li className={passwordStrength.length ? 'text-green-500' : 'text-gray-500'}>
+                      {passwordStrength.length ? '✓' : '✗'} At least 8 characters
+                    </li>
+                    <li className={passwordStrength.uppercase ? 'text-green-500' : 'text-gray-500'}>
+                      {passwordStrength.uppercase ? '✓' : '✗'} At least one uppercase letter
+                    </li>
+                    <li className={passwordStrength.lowercase ? 'text-green-500' : 'text-gray-500'}>
+                      {passwordStrength.lowercase ? '✓' : '✗'} At least one lowercase letter
+                    </li>
+                    <li className={passwordStrength.number ? 'text-green-500' : 'text-gray-500'}>
+                      {passwordStrength.number ? '✓' : '✗'} At least one number
+                    </li>
+                    <li className={passwordStrength.specialChar ? 'text-green-500' : 'text-gray-500'}>
+                      {passwordStrength.specialChar ? '✓' : '✗'} At least one special character
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Qualifications
+                </label>
+                <input
+                  type="text"
+                  value={localForm.qualifications || ''}
+                  onChange={handleChange}
+                  onKeyPress={(e) => {
+                    const key = e.key;
+                    if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                      e.preventDefault();
+                      setValidationErrors(prev => ({ ...prev, qualifications: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                    }
+                  }}
+                  name="qualifications"
+                  className={`w-full px-4 py-2 border ${validationErrors.qualifications ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                />
+                {validationErrors.qualifications && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.qualifications}</div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+          
+          {/* Right Column */}
+          <div className="space-y-3">
+            
+            {/* Center Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Center Information</h3>
+              
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assigned Center <span className="text-red-600">*</span> <span className="text-gray-500">(Select the center to assign this tutor.)</span>
+                </label>
+                {centersError ? (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span className="block sm:inline">{centersError}</span>
+                    <div className="mt-2">
+                      <button type="button" onClick={handleRetryCenters} className="px-4 py-2 bg-red-500 hover:bg-red-700 text-white font-bold rounded">Retry</button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={centerQuery}
+                    onChange={(e) => setCenterQuery(e.target.value)}
+                    onFocus={() => setShowCenterDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
+                    placeholder="Search for a center"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
+                  {showCenterDropdown && (
+                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-auto">
+                      {filteredCenters.map(center => (
+                        <div 
+                          key={center._id}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                          onMouseDown={() => { // use onMouseDown to prevent onBlur from closing immediately
+                            setLocalForm(prev => ({ ...prev, assignedCenter: center._id }));
+                            setCenterQuery(center.name);
+                            setShowCenterDropdown(false);
+                          }}
+                        >
+                          {center.name}, {center.area}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {errors.assignedCenter && (
+                  <div className="text-red-500 text-sm mt-1">{errors.assignedCenter}</div>
+                )}
+              </div>
+            </div>
+            
+            {/* Session Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Session Information</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Session Type <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={localForm.sessionType || ''}
+                  onChange={handleInputChange}
+                  name="sessionType"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                >
+                  <option value="">Select Session Type</option>
+                  {sessionTypes.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Session Timing <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={localForm.sessionTiming || ''}
+                  onChange={handleInputChange}
+                  name="sessionTiming"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                >
+                  <option value="">Select Timing</option>
+                  {sessionTimings.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {/* Subjects */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Subjects</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Subject(s) <span className="text-red-600">*</span> <span className="text-gray-500">(Required. Click to select multiple)</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                  {subjectsList.map(subject => (
+                    <label 
+                      key={subject.value} 
+                      className={`px-3 py-1 text-sm rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-600 text-white font-medium' : 'bg-gray-100 text-gray-700'}`}
+                      tabIndex="0"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.currentTarget.querySelector('input[type="checkbox"]').click();
+                        }
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        tabIndex="-1"
+                        checked={localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value)}
+                        onChange={() => {
+                          // Always ensure currentSubjects is an array
+                          let currentSubjects = [];
+                          if (localForm.subjects) {
+                            currentSubjects = Array.isArray(localForm.subjects) 
+                              ? [...localForm.subjects] 
+                              : [localForm.subjects];
+                          }
+                          
+                          // Create new array based on selection/deselection
+                          const newSubjects = currentSubjects.includes(subject.value)
+                            ? currentSubjects.filter(s => s !== subject.value)
+                            : [...currentSubjects, subject.value];
+                          
+                          // Update state with new array
+                          setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
+                        }}
+                      />
+                      {subject.label}
+                    </label>
+                  ))}
+                </div>
+                <div className="text-gray-500 text-sm mt-1">
+                  Selected subjects: {
+                    (() => {
+                      // Process subjects to ensure it's an array
+                      const subjectsArr = !localForm.subjects ? [] :
+                        (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                        
+                      return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
+                    })()
+                  }
+                </div>
+                {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
+              </div>
+            </div>
+            
+            {/* Hadiya Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Hadiya Information</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assigned Hadiya Amount <span className="text-red-600">*</span> (₹)
+                </label>
+                <input
+                  type="number"
+                  value={localForm.assignedHadiyaAmount || ''}
+                  onChange={handleChange}
+                  name="assignedHadiyaAmount"
+                  max={100000}
+                  className={`w-full px-4 py-2 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  required
+                />
+                {validationErrors.assignedHadiyaAmount && (
+                  <div className="text-red-500 text-sm mt-1">{validationErrors.assignedHadiyaAmount}</div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        </div>
+        
+        {/* Bank Details */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-800 mb-3">Bank Details</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aadhar Number
+              </label>
+              <input 
+                type="text"
+                value={localForm.aadharNumber || ''}
+                onChange={handleInputChange}
+                name="aadharNumber"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                placeholder="XXXX XXXX XXXX"
+              />
+              <div className="text-gray-500 text-sm mt-1">
+                12 digits only. Spaces will be added automatically after every 4 digits.
+              </div>
+              {errors.aadharNumber && <div className="text-red-500 text-sm mt-1">{errors.aadharNumber}</div>}
+            </div>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name <span className="text-red-600">*</span>
+                Bank Name
               </label>
-              <input
+              <input 
                 type="text"
-                value={localForm.name || ''}
+                value={localForm.bankName || ''}
                 onChange={handleChange}
                 onKeyPress={(e) => {
                   const key = e.key;
                   if (!/^[a-zA-Z'\s]$/.test(key)) {
                     e.preventDefault();
-                    setValidationErrors(prev => ({ ...prev, name: `Character '${key}' is not allowed. Only letters, spaces, and apostrophes are allowed.` }));
+                    setValidationErrors(prev => ({ ...prev, bankName: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
                   }
                 }}
-                name="name"
-                className={`w-full px-4 py-2 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                name="bankName"
+                maxLength={30}
+                className={`w-full px-4 py-2 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                placeholder="e.g., State Bank of India"
               />
-              {validationErrors.name && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.name}</div>
+              {validationErrors.bankName && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.bankName}</div>
               )}
               <div className="text-gray-500 text-sm mt-1">
-                {localForm.name ? localForm.name.length : 0}/60 characters
+                {localForm.bankName ? localForm.bankName.length : 0}/30 characters
               </div>
             </div>
-            
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="email"
-                value={localForm.email || ''}
-                onChange={handleChange}
-                name="email"
-                className={`w-full px-4 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                required
-              />
-              {validationErrors.email && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.email}</div>
-              )}
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone <span className="text-red-600">*</span> <span className="text-gray-500">(This will be the tutor's login username)</span>
+                Bank Branch
               </label>
               <input 
-                type="tel"
-                value={localForm.phone || ''}
-                onChange={handleInputChange}
-                name="phone"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                placeholder="1234567890"
-                required
-              />
-              <div className="text-gray-500 text-sm mt-1">
-                Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
-              </div>
-              {errors.phone && <div className="text-red-500 text-sm mt-1">{errors.phone}</div>}
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address <span className="text-red-600">*</span>
-              </label>
-              <textarea
-                value={localForm.address || ''}
-                onChange={(e) => handleChange(e)}
-                onKeyPress={(e) => {
-                  const key = e.key;
-                  if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
-                    e.preventDefault();
-                    setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
-                  }
-                }}
-                name="address"
-                className={`mt-1 block w-full px-3 py-2 border ${validationErrors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                rows="3"
-                required
-                maxLength={60}
-              />
-              {validationErrors.address && <div className="text-red-500 text-sm mt-1">{validationErrors.address}</div>}
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Login Password <span className="text-red-600">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={localForm.password || ''}
-                  onChange={handleChange}
-                  name="password"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  placeholder="Enter password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.password}</div>
-              )}
-              <div className="text-gray-500 text-sm mt-1">
-                <p>{localForm.password ? localForm.password.length : 0}/10 characters</p>
-              </div>
-              {/* Password strength indicator */}
-              <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Password must contain:</p>
-                <ul className="text-sm text-gray-600">
-                  <li className={passwordStrength.length ? 'text-green-500' : 'text-gray-500'}>
-                    {passwordStrength.length ? '✓' : '✗'} At least 8 characters
-                  </li>
-                  <li className={passwordStrength.uppercase ? 'text-green-500' : 'text-gray-500'}>
-                    {passwordStrength.uppercase ? '✓' : '✗'} At least one uppercase letter
-                  </li>
-                  <li className={passwordStrength.lowercase ? 'text-green-500' : 'text-gray-500'}>
-                    {passwordStrength.lowercase ? '✓' : '✗'} At least one lowercase letter
-                  </li>
-                  <li className={passwordStrength.number ? 'text-green-500' : 'text-gray-500'}>
-                    {passwordStrength.number ? '✓' : '✗'} At least one number
-                  </li>
-                  <li className={passwordStrength.specialChar ? 'text-green-500' : 'text-gray-500'}>
-                    {passwordStrength.specialChar ? '✓' : '✗'} At least one special character
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Qualifications
-              </label>
-              <input
                 type="text"
-                value={localForm.qualifications || ''}
+                value={localForm.bankBranch || ''}
                 onChange={handleChange}
                 onKeyPress={(e) => {
                   const key = e.key;
-                  if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                  if (!/^[a-zA-Z'\s]$/.test(key)) {
                     e.preventDefault();
-                    setValidationErrors(prev => ({ ...prev, qualifications: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                    setValidationErrors(prev => ({ ...prev, bankBranch: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
                   }
                 }}
-                name="qualifications"
-                className={`w-full px-4 py-2 border ${validationErrors.qualifications ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                name="bankBranch"
+                maxLength={30}
+                className={`w-full px-4 py-2 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                placeholder="e.g., Main Branch"
               />
-              {validationErrors.qualifications && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.qualifications}</div>
+              {validationErrors.bankBranch && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.bankBranch}</div>
               )}
-            </div>
-          </div>
-          
-          {/* Account Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Center Information</h3>
-            
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Assigned Center <span className="text-red-600">*</span> <span className="text-gray-500">(Select the center to assign this tutor.)</span>
-              </label>
-              {centersError ? (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                  <span className="block sm:inline">{centersError}</span>
-                  <div className="mt-2">
-                    <button type="button" onClick={handleRetryCenters} className="px-4 py-2 bg-red-500 hover:bg-red-700 text-white font-bold rounded">Retry</button>
-                  </div>
-                </div>
-              ) : null}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={centerQuery}
-                  onChange={(e) => setCenterQuery(e.target.value)}
-                  onFocus={() => setShowCenterDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
-                  placeholder="Search for a center"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-                {showCenterDropdown && (
-                  <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-auto">
-                    {filteredCenters.map(center => (
-                      <div 
-                        key={center._id}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                        onMouseDown={() => { // use onMouseDown to prevent onBlur from closing immediately
-                          setLocalForm(prev => ({ ...prev, assignedCenter: center.name }));
-                          setCenterQuery(center.name);
-                          setShowCenterDropdown(false);
-                        }}
-                      >
-                        {center.name}, {center.area}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {errors.assignedCenter && <div className="text-red-500 text-sm mt-1">{errors.assignedCenter}</div>}
-            </div>
-          </div>
-          
-          {/* Center & Subjects */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start md:col-span-2">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Subjects</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Subject(s) <span className="text-gray-500">(Required. Click to select multiple)</span>
-              </label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {subjectsList.map(subject => (
-                  <label 
-                    key={subject.value} 
-                    className={`px-4 py-2 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    tabIndex="0"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.currentTarget.querySelector('input[type="checkbox"]').click();
-                      }
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      tabIndex="-1"
-                      checked={localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value)}
-                      onChange={() => {
-                        // Always ensure currentSubjects is an array
-                        let currentSubjects = [];
-                        if (localForm.subjects) {
-                          currentSubjects = Array.isArray(localForm.subjects) 
-                            ? [...localForm.subjects] 
-                            : [localForm.subjects];
-                        }
-                        
-                        // Create new array based on selection/deselection
-                        const newSubjects = currentSubjects.includes(subject.value)
-                          ? currentSubjects.filter(s => s !== subject.value)
-                          : [...currentSubjects, subject.value];
-                        
-                        // Update state with new array
-                        setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
-                      }}
-                    />
-                    {subject.label}
-                  </label>
-                ))}
-              </div>
               <div className="text-gray-500 text-sm mt-1">
-                Selected subjects: {
-                  (() => {
-                    // Process subjects to ensure it's an array
-                    const subjectsArr = !localForm.subjects ? [] :
-                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                      
-                    return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
-                  })()
-                }
+                {localForm.bankBranch ? localForm.bankBranch.length : 0}/30 characters
               </div>
-              {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
             </div>
-          </div>
-          
-          {/* Session Info */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Session Information</h3>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Session Type <span className="text-red-600">*</span>
+                Account Number
               </label>
-              <select
-                value={localForm.sessionType || ''}
+              <input 
+                type="text"
+                value={localForm.accountNumber || ''}
                 onChange={handleInputChange}
-                name="sessionType"
+                name="accountNumber"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                required
-              >
-                <option value="">Select Session Type</option>
-                {sessionTypes.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Session Timing <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={localForm.sessionTiming || ''}
-                onChange={handleInputChange}
-                name="sessionTiming"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                required
-              >
-                <option value="">Select Timing</option>
-                {sessionTimings.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          {/* Hadiya */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Hadiya Information</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Assigned Hadiya Amount <span className="text-red-600">*</span> (₹)
-              </label>
-              <input
-                type="number"
-                value={localForm.assignedHadiyaAmount || ''}
-                onChange={handleChange}
-                name="assignedHadiyaAmount"
-                max={100000}
-                className={`w-full px-4 py-2 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                required
+                placeholder="11-18 digits"
               />
-              {validationErrors.assignedHadiyaAmount && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.assignedHadiyaAmount}</div>
+              <div className="text-gray-500 text-sm mt-1">
+                Account number should be between 11-18 digits.
+              </div>
+              {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
+              {validationErrors.accountNumber && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.accountNumber}</div>
               )}
             </div>
           </div>
           
-          {/* Bank Details */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 self-start md:col-span-2">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">Bank Details</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Aadhar Number
-                </label>
-                <input 
-                  type="text"
-                  value={localForm.aadharNumber || ''}
-                  onChange={handleInputChange}
-                  name="aadharNumber"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  placeholder="XXXX XXXX XXXX"
-                />
-                <div className="text-gray-500 text-sm mt-1">
-                  12 digits only. Spaces will be added automatically after every 4 digits.
-                </div>
-                {errors.aadharNumber && <div className="text-red-500 text-sm mt-1">{errors.aadharNumber}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                IFSC Code
+              </label>
+              <input 
+                type="text"
+                value={localForm.ifscCode || ''}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  setLocalForm(prev => ({ ...prev, ifscCode: value }));
+                }}
+                name="ifscCode"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                placeholder="e.g., SBIN0123456"
+                maxLength={11}
+              />
+              <div className="text-gray-500 text-sm mt-1">
+                Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bank Name
-                </label>
-                <input 
-                  type="text"
-                  value={localForm.bankName || ''}
-                  onChange={handleChange}
-                  onKeyPress={(e) => {
-                    const key = e.key;
-                    if (!/^[a-zA-Z'\s]$/.test(key)) {
-                      e.preventDefault();
-                      setValidationErrors(prev => ({ ...prev, bankName: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
-                    }
-                  }}
-                  name="bankName"
-                  maxLength={30}
-                  className={`w-full px-4 py-2 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                  placeholder="e.g., State Bank of India"
-                />
-                {validationErrors.bankName && (
-                  <div className="text-red-500 text-sm mt-1">{validationErrors.bankName}</div>
-                )}
-                <div className="text-gray-500 text-sm mt-1">
-                  {localForm.bankName ? localForm.bankName.length : 0}/30 characters
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bank Branch
-                </label>
-                <input 
-                  type="text"
-                  value={localForm.bankBranch || ''}
-                  onChange={handleChange}
-                  onKeyPress={(e) => {
-                    const key = e.key;
-                    if (!/^[a-zA-Z'\s]$/.test(key)) {
-                      e.preventDefault();
-                      setValidationErrors(prev => ({ ...prev, bankBranch: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
-                    }
-                  }}
-                  name="bankBranch"
-                  maxLength={30}
-                  className={`w-full px-4 py-2 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                  placeholder="e.g., Main Branch"
-                />
-                {validationErrors.bankBranch && (
-                  <div className="text-red-500 text-sm mt-1">{validationErrors.bankBranch}</div>
-                )}
-                <div className="text-gray-500 text-sm mt-1">
-                  {localForm.bankBranch ? localForm.bankBranch.length : 0}/30 characters
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Account Number
-                </label>
-                <input 
-                  type="text"
-                  value={localForm.accountNumber || ''}
-                  onChange={handleInputChange}
-                  name="accountNumber"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  placeholder="11-18 digits"
-                />
-                <div className="text-gray-500 text-sm mt-1">
-                  Account number should be between 11-18 digits.
-                </div>
-                {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
-                {validationErrors.accountNumber && (
-                  <div className="text-red-500 text-sm mt-1">{validationErrors.accountNumber}</div>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  IFSC Code
-                </label>
-                <input 
-                  type="text"
-                  value={localForm.ifscCode || ''}
-                  onChange={(e) => {
-                    const value = e.target.value.toUpperCase();
-                    setLocalForm(prev => ({ ...prev, ifscCode: value }));
-                  }}
-                  name="ifscCode"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  placeholder="e.g., SBIN0123456"
-                  maxLength={11}
-                />
-                <div className="text-gray-500 text-sm mt-1">
-                  Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
-                </div>
-                {errors.ifscCode && <div className="text-red-500 text-sm mt-1">{errors.ifscCode}</div>}
-              </div>
+              {errors.ifscCode && <div className="text-red-500 text-sm mt-1">{errors.ifscCode}</div>}
             </div>
           </div>
         </div>
