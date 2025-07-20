@@ -76,7 +76,7 @@ const Footer = () => {
             &copy; {new Date().getFullYear()} The Quran Foundation. All rights reserved.
           </p>
           <p className="text-gray-400 text-sm mt-2 md:mt-0 flex items-center justify-center">
-            Made with <FiHeart className="mx-1 text-accent-500" size={14} /> for the community
+            Version 1.0.0 (Official Release)
           </p>
         </div>
       </div>
