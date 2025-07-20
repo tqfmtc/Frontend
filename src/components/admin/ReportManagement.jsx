@@ -291,13 +291,7 @@ const ReportManagement = () => {
                     Center
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Days
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Present Days
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Absent Days
+                    Attendance
                   </th>
                 </tr>
               </thead>
@@ -318,6 +312,10 @@ const ReportManagement = () => {
                   // Calculate absent days: only count days that have passed
                   const absentDays = daysElapsed - presentDays;
 
+                  // Calculate percentages
+                  const presentPercentage = (presentDays / daysInMonth) * 100;
+                  const absentPercentage = (absentDays / daysInMonth) * 100;
+
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -329,13 +327,20 @@ const ReportManagement = () => {
                         <div className="text-sm text-gray-900">{report.center.name}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{daysInMonth}</div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{presentDays}</div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{absentDays}</div>
+                        <div className="flex flex-col">
+                          <div className="text-sm text-gray-900 mb-1">
+                            {Math.round(presentPercentage)}% Present
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div 
+                              className="bg-green-600 h-2.5 rounded-full" 
+                              style={{ width: `${presentPercentage}%` }}
+                            ></div>
+                          </div>
+                          {/* <div className="text-xs text-gray-500 mt-1">
+                            {presentDays} present, {absentDays} absent of {daysInMonth} days
+                          </div> */}
+                        </div>
                       </td>
                     </tr>
                   );

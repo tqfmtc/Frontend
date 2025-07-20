@@ -406,7 +406,6 @@ const TutorManagement = () => {
               </svg>
               Back
             </button>
-            <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600' }}>Add New Tutor</h2>
           </div>
           <AddTutorForm 
             onSubmit={handleAddTutor} 
