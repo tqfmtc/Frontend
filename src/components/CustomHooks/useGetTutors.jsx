@@ -2,7 +2,7 @@ import React from 'react';
 import useGet from './useGet'; // adjust the path as needed
 
 const TutorsList = () => {
-  const { response: tutors, loading } = useGet("http://localhost:3000/adminnoauth/alltutors");
+  const { response: tutors, loading } = useGet("/adminnoauth/alltutors");
   console.log("From the useTutors...!!!",tutors)
   if (loading) return <p>Loading tutors...</p>;
 
