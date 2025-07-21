@@ -278,7 +278,7 @@ const TutorStudents = () => {
 
       console.log('Sending student data:', formattedData) // Debug log
 
-      const response = await fetch('https://mtc-backend-jn5y.onrender.com/api/students', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/students`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -484,7 +484,7 @@ const TutorStudents = () => {
         throw new Error('Please login to continue')
       }
 
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/students/${selectedStudent._id}/attendance`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/students/${selectedStudent._id}/attendance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -654,7 +654,7 @@ const TutorStudents = () => {
       }
       setFormError('');
       console.log('Updating student with data:', updatedData)
-      const response = await fetch(`https://mtc-backend-jn5y.onrender.com/api/students/${editFormData._id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/students/${editFormData._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -696,7 +696,7 @@ const TutorStudents = () => {
       }
 
       // Make the DELETE request
-      const deleteUrl = `https://mtc-backend-jn5y.onrender.com/api/students/${studentId}`;
+      const deleteUrl = `${import.meta.env.VITE_API_URL}/students/${studentId}`;
 
       // Use fetch instead of axios for consistency
       const response = await fetch(deleteUrl, {
