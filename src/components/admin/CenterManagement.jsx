@@ -403,10 +403,10 @@ const CenterManagement = () => {
                       name="name"
                       value={formData.name}
                       onChange={e => {
-                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 100);
                         setFormData(prev => ({ ...prev, name: value }));
                       }}
-                      maxLength={25}
+                      maxLength={100}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
@@ -419,10 +419,10 @@ const CenterManagement = () => {
                       name="area"
                       value={formData.area}
                       onChange={e => {
-                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50);
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 150);
                         setFormData(prev => ({ ...prev, area: value }));
                       }}
-                      maxLength={50}
+                      maxLength={150}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
@@ -435,10 +435,10 @@ const CenterManagement = () => {
                       name="sadarName"
                       value={formData.sadarName}
                       onChange={e => {
-                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+                        const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50);
                         setFormData(prev => ({ ...prev, sadarName: value }));
                       }}
-                      maxLength={25}
+                      maxLength={50}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
