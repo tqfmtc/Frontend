@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { MapContainer, TileLayer, Marker, useMap, Circle } from 'react-leaflet'
 import { FiUsers, FiClock, FiCheck, FiX } from 'react-icons/fi'
@@ -144,12 +144,18 @@ const LocationMarker = ({ onLocationUpdate }) => {
   return position === null ? null : <Marker position={position} icon={redIcon} />
 }
 
-import { useRef } from 'react';
+
+
+// Function to detect Android devices
+const isAndroidDevice = () => {
+  return /Android/i.test(navigator.userAgent);
+};
 
 const TutorOverview = () => {
   const { alreadyMarked, loading: attendanceCheckLoading, error: attendanceCheckError } = useTodayAttendance();
   const [showDeniedPopover, setShowDeniedPopover] = useState(false);
   const popoverRef = useRef();
+  const isAndroid = isAndroidDevice();
 
   const [currentTime, setCurrentTime] = useState(new Date())
   const [currentLocation, setCurrentLocation] = useState(null)
@@ -347,6 +353,24 @@ const TutorOverview = () => {
         className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-6 sm:p-8 border border-white/20"
       >
         <h2 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent mb-6">Mark Attendance</h2>
+        
+        {/* Android-specific download prompt */}
+        {isAndroid && (
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-gray-700">Use <span className="font-bold text-primary-600">Attendance App</span> to mark attendance on android devices. {' '}
+              <a 
+                href="/attendance-app.apk" 
+                download
+                className="inline-flex items-center text-sm text-accent-600 hover:text-accent-700 font-medium ml-2 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download Attendance App
+              </a>
+            </p>
+          </div>
+        )}
         {attendanceCheckLoading ? (
           <div className="mb-6 p-4 bg-blue-50/80 backdrop-blur-sm text-blue-700 rounded-xl border border-blue-100 flex items-center">
             <svg className="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -362,73 +386,103 @@ const TutorOverview = () => {
           </div>
         ) : (
           <>
-            {error && (
-              <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm text-red-700 rounded-xl border border-red-100 flex items-center">
-                <FiX className="h-5 w-5 mr-3" />
-                {error}
+            {/* Android users: Show big download prompt */}
+            {isAndroid ? (
+              <div className="text-center py-12">
+                <div className="mb-8">
+                  <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-primary-600 to-accent-600 rounded-full flex items-center justify-center">
+                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Download Attendance App</h3>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                    For accurate location tracking on Android devices, please download and use our dedicated attendance app.
+                  </p>
+                  <a 
+                    href="/attendance-app.apk" 
+                    download
+                    className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary-600 to-accent-600 text-white text-lg font-semibold rounded-xl hover:shadow-xl hover:shadow-primary-500/25 hover:-translate-y-0.5 transition-all duration-300"
+                  >
+                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Download Attendance App
+                  </a>
+                </div>
               </div>
-            )}
-            {locationError && (
-              <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm text-red-700 rounded-xl border border-red-100 flex items-center">
-                <FiX className="h-5 w-5 mr-3" />
-                {locationError}
-              </div>
-            )}
-            <div className="relative h-[300px] sm:h-[350px] md:h-[400px] rounded-2xl overflow-hidden mb-6 shadow-2xl border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:shadow-accent-500/20">
-              <MapContainer
-                center={[centerLocation.lat, centerLocation.lng]}
-                zoom={15}
-                style={{ height: '100%', width: '100%' }}
-                attributionControl={false}
-                className="z-10"
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                />
-                <LocationMarker onLocationUpdate={handleLocationUpdate} />
-                <Marker 
-                  position={[centerLocation.lat, centerLocation.lng]} 
-                  icon={blueIcon}
-                />
-                <Circle
-                  center={[centerLocation.lat, centerLocation.lng]}
-                  radius={100}
-                  pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
-                />
-              </MapContainer>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div className="w-full sm:w-auto">
-                {locationMatch !== null && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10">
-                    <div className="flex items-center">
-                      <div className={`w-4 h-4 rounded-full mr-3 ${locationMatch ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
-                      <p className={`text-base sm:text-lg font-medium ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
-                        {locationMatch 
-                          ? 'Location verified'
-                          : 'Location mismatch'}
-                      </p>
-                    </div>
+            ) : (
+              /* Non-Android users: Show map and attendance marking */
+              <>
+                {error && (
+                  <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm text-red-700 rounded-xl border border-red-100 flex items-center">
+                    <FiX className="h-5 w-5 mr-3" />
+                    {error}
                   </div>
                 )}
-              </div>
-              <div className="flex gap-4 w-full sm:w-auto justify-end">
-                <button
-                  onClick={handleMarkAttendance}
-                  disabled={!locationMatch || attendanceMarked}
-                  className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center flex-1 sm:flex-none text-base font-medium shadow-lg ${
-                    locationMatch && !attendanceMarked
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-500 text-white hover:shadow-xl hover:shadow-green-500/25 hover:-translate-y-0.5'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {attendanceMarked ? <FiCheck className="mr-2 text-lg" /> : null}
-                  {attendanceMarked ? 'Marked' : 'Mark Attendance'}
-                </button>
-              </div>
-            </div>
+                {locationError && (
+                  <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm text-red-700 rounded-xl border border-red-100 flex items-center">
+                    <FiX className="h-5 w-5 mr-3" />
+                    {locationError}
+                  </div>
+                )}
+                <div className="relative h-[300px] sm:h-[350px] md:h-[400px] rounded-2xl overflow-hidden mb-6 shadow-2xl border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:shadow-accent-500/20">
+                  <MapContainer
+                    center={[centerLocation.lat, centerLocation.lng]}
+                    zoom={15}
+                    style={{ height: '100%', width: '100%' }}
+                    attributionControl={false}
+                    className="z-10"
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <LocationMarker onLocationUpdate={handleLocationUpdate} />
+                    <Marker 
+                      position={[centerLocation.lat, centerLocation.lng]} 
+                      icon={blueIcon}
+                    />
+                    <Circle
+                      center={[centerLocation.lat, centerLocation.lng]}
+                      radius={100}
+                      pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
+                    />
+                  </MapContainer>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div className="w-full sm:w-auto">
+                    {locationMatch !== null && (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10">
+                        <div className="flex items-center">
+                          <div className={`w-4 h-4 rounded-full mr-3 ${locationMatch ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
+                          <p className={`text-base sm:text-lg font-medium ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
+                            {locationMatch 
+                              ? 'Location verified'
+                              : 'Location mismatch'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-4 w-full sm:w-auto justify-end">
+                    <button
+                      onClick={handleMarkAttendance}
+                      disabled={!locationMatch || attendanceMarked}
+                      className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center flex-1 sm:flex-none text-base font-medium shadow-lg ${
+                        locationMatch && !attendanceMarked
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-500 text-white hover:shadow-xl hover:shadow-green-500/25 hover:-translate-y-0.5'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {attendanceMarked ? <FiCheck className="mr-2 text-lg" /> : null}
+                      {attendanceMarked ? 'Marked' : 'Mark Attendance'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </motion.div>
