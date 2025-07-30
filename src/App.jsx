@@ -7,6 +7,8 @@ import HomePage from './pages/HomePage'
 import AdminPage from './pages/AdminPage'
 import SupervisorPage from './pages/SupervisorPage'
 import TutorPage from './pages/TutorPage'
+import TutorForgotPassword from './pages/TutorForgotPassword'
+import TutorPasswordReset from './pages/TutorPasswordReset'
 import AdminDashboard from './components/admin/AdminDashboard'
 import SupervisorDashboard from './components/supervisor2/SupervisorDashboard'
 import TutorDashboard from './components/tutor/TutorDashboard'
@@ -68,6 +70,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/tutor" element={<TutorPage />} />
+          <Route path="/tutor/forgot-password" element={<TutorForgotPassword />} />
+          <Route path="/tutor/password-reset/:token" element={<TutorPasswordReset />} />
           <Route path="/supervisor" element={<SupervisorPage />} />
           <Route path="/guest-login" element={<GuestLoginPage />} />
           <Route path="/guest-dashboard" element={<GuestDashboard />} />
