@@ -5,10 +5,12 @@ import UpdateTutorForm from './tutors/UpdateTutorForm';
 import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
+import useGet from '../CustomHooks/useGet';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
   const [selectedTutor, setSelectedTutor] = useState(null);
+  const { response: tutors } = useGet('/tutors');
 
   // State for form data, errors, etc.
   const [formData, setFormData] = useState({});
@@ -317,6 +319,16 @@ const TutorManagement = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Calculate tutor stats
+  const tutorStats = React.useMemo(() => {
+    if (!tutors) return { total: 0, active: 0, inactive: 0 };
+    return {
+      total: tutors.length,
+      active: tutors.filter(t => t.status === 'active').length,
+      inactive: tutors.filter(t => t.status === 'inactive').length
+    };
+  }, [tutors]);
+
   // Render based on mode
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
@@ -325,15 +337,37 @@ const TutorManagement = () => {
           <div style={{ 
             background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
             borderRadius: '10px', 
-            padding: '24px', 
+            padding: '20px', 
             marginBottom: '24px',
             color: 'white',
             boxShadow: '0 10px 25px rgba(59, 130, 246, 0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
+              <div style={{ flex: '1' }}>
                 <h1 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 6px 0' }}>Tutor Management</h1>
                 <p style={{ fontSize: '14px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '24px', 
+                alignItems: 'center', 
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                margin: '0 24px'
+              }}>
+                <div style={{ textAlign: 'center', paddingRight: '24px', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0' }}>{tutorStats.total}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Total</p>
+                </div>
+                <div style={{ textAlign: 'center', paddingRight: '24px', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#4ade80' }}>{tutorStats.active}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Active</p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#f87171' }}>{tutorStats.inactive}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Inactive</p>
+                </div>
               </div>
               <button
                 style={{ 
@@ -348,7 +382,8 @@ const TutorManagement = () => {
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
                 }}
                 onClick={handleAdd}
               >
@@ -365,8 +400,7 @@ const TutorManagement = () => {
             background: 'white', 
             borderRadius: '12px', 
             padding: '24px',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
-            marginBottom: '32px'
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)'
           }}>
             <TutorList 
               onEdit={handleEdit} 

@@ -32,7 +32,7 @@ const Popover = ({ isOpen, onClose, title, message, type = 'success' }) => {
   );
 };
 
-const Overview = () => {
+const Overview = ({ onTabChange }) => {
   // State for clearing activity
   // const [clearingActivity, setClearingActivity] = useState(false);
   const [showPopover, setShowPopover] = useState(false);
@@ -217,13 +217,33 @@ const Overview = () => {
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {stats.map((stat, index) => (
+        {[
+          {
+            label: 'Active Tutors',
+            value: tutorsLoading ? '...' : activeTutors?.length || 0,
+            icon: FiUsers,
+            tab: 'tutors'
+          },
+          {
+            label: 'Total Centers',
+            value: centersLoading ? '...' : activeCenters?.length || 0,
+            icon: FiMapPin,
+            tab: 'centers'
+          },
+          {
+            label: 'Attendance',
+            value: attendancePercentage,
+            icon: FiClock,
+            tab: 'reports'
+          }
+        ].map((stat, index) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-lg shadow-md p-6"
+            onClick={() => onTabChange(stat.tab)}
+            className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200"
           >
             <div className="flex items-center justify-between">
               <div>

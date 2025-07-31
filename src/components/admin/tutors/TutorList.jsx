@@ -9,7 +9,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [statusFilter, setStatusFilter] = useState('active'); // Set 'active' as default
   const [filteredTutors, setFilteredTutors] = useState([]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,7 +88,9 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
 
       const data = await response.json();
       setTutors(data);
-      setFilteredTutors(data); // Initialize filtered tutors with all tutors
+      // Filter active tutors initially
+      const activeTutors = data.filter(tutor => tutor.status === 'active');
+      setFilteredTutors(activeTutors);
     } catch (err) {
       setError(err.message || 'Failed to fetch tutors');
     } finally {
@@ -199,19 +201,6 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   return (
     <div>
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '8px', 
-          padding: '12px', 
-          boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Total Tutors</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>{stats.total}</div>
-        </div>
-      </div>
-      
       {/* Search and Filters */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
