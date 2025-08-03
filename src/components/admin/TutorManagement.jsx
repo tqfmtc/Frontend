@@ -5,12 +5,10 @@ import UpdateTutorForm from './tutors/UpdateTutorForm';
 import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
-import useGet from '../CustomHooks/useGet';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
   const [selectedTutor, setSelectedTutor] = useState(null);
-  const { response: tutors } = useGet('/tutors');
 
   // State for form data, errors, etc.
   const [formData, setFormData] = useState({});
@@ -75,12 +73,12 @@ const TutorManagement = () => {
         }
       });
       
-      console.log('Sending JSON data to API:', jsonData);
+      console.log('Submitting tutor payload:', JSON.stringify(jsonData, null, 2));  // Log the payload
       
       // Password validation
       if ('password' in formData && !isValidPassword(formData.password)) {
         setErrorMessage(
-          'Password must be at least 8 characters, contain no spaces, and not include quotes (\" or \\\').'
+          'Password must be at least 8 characters, contain no spaces, and not include quotes (" or \').'
         );
         setShowErrorPopover(true);
         setIsSubmitting(false);
@@ -98,8 +96,9 @@ const TutorManagement = () => {
         // With axios, successful responses come to this point
         setIsSubmitting(false);
         // Don't immediately reset - let the form show its success message first
+        return response; // Ensure promise resolves
       } catch (apiError) {
-        // Detailed error handling for API errors
+        console.error('Full error response:', apiError.response?.data);  // Detailed backend error
         console.error('API Error:', apiError);
         
         // Get detailed error message from the response if available
@@ -127,6 +126,7 @@ const TutorManagement = () => {
         throw apiError; // Re-throw to be caught by outer catch
       }
     } catch (err) {
+      console.error('Full error response:', err.response?.data);  // Detailed backend error
       console.error('Add Tutor Error:', err);
       if (!showErrorPopover) { // Only set if not already set by inner catch
         // Specific handling for 500 errors
@@ -254,7 +254,7 @@ const TutorManagement = () => {
         }
       });
       
-      console.log('Sending JSON data to API for update:', jsonData);
+      console.log('Submitting tutor payload:', JSON.stringify(jsonData, null, 2));  // Log the payload
       
       // Password validation
       if ('password' in updatedData && updatedData.password && !isValidPassword(updatedData.password)) {
@@ -288,6 +288,7 @@ const TutorManagement = () => {
       // Trigger refresh of tutor list for when we return to it
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
+      console.error('Full error response:', err.response?.data);  // Detailed backend error
       setErrorMessage(err.message || 'Failed to update tutor');
       setShowErrorPopover(true);
     } finally {
@@ -319,16 +320,6 @@ const TutorManagement = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Calculate tutor stats
-  const tutorStats = React.useMemo(() => {
-    if (!tutors) return { total: 0, active: 0, inactive: 0 };
-    return {
-      total: tutors.length,
-      active: tutors.filter(t => t.status === 'active').length,
-      inactive: tutors.filter(t => t.status === 'inactive').length
-    };
-  }, [tutors]);
-
   // Render based on mode
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
@@ -337,37 +328,15 @@ const TutorManagement = () => {
           <div style={{ 
             background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
             borderRadius: '10px', 
-            padding: '20px', 
+            padding: '24px', 
             marginBottom: '24px',
             color: 'white',
             boxShadow: '0 10px 25px rgba(59, 130, 246, 0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ flex: '1' }}>
+              <div>
                 <h1 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 6px 0' }}>Tutor Management</h1>
                 <p style={{ fontSize: '14px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
-              </div>
-              <div style={{ 
-                display: 'flex', 
-                gap: '24px', 
-                alignItems: 'center', 
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                margin: '0 24px'
-              }}>
-                <div style={{ textAlign: 'center', paddingRight: '24px', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0' }}>{tutorStats.total}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Total</p>
-                </div>
-                <div style={{ textAlign: 'center', paddingRight: '24px', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#4ade80' }}>{tutorStats.active}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Active</p>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#f87171' }}>{tutorStats.inactive}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Inactive</p>
-                </div>
               </div>
               <button
                 style={{ 
@@ -382,8 +351,7 @@ const TutorManagement = () => {
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap'
+                  gap: '6px'
                 }}
                 onClick={handleAdd}
               >
@@ -400,7 +368,8 @@ const TutorManagement = () => {
             background: 'white', 
             borderRadius: '12px', 
             padding: '24px',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)'
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+            marginBottom: '32px'
           }}>
             <TutorList 
               onEdit={handleEdit} 
