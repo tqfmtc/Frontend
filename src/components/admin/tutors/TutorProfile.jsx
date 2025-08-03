@@ -1,331 +1,370 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Popover from '../../common/Popover';
 
-const TutorProfile = ({ tutor, onClose }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  
+const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
+  const navigate = useNavigate();
+  const [showDeletePopover, setShowDeletePopover] = useState(false);
+
   if (!tutor) {
-    return <div>No tutor data available</div>;
+    return (
+      <div className="w-full max-w-full mx-auto p-2 bg-white rounded shadow-md border border-blue-100">
+        <div className="text-center py-8 text-gray-500">
+          <p>No tutor data available</p>
+        </div>
+      </div>
+    );
   }
 
-  const sectionStyle = {
-    background: '#ffffff',
-    borderRadius: 12,
-    padding: 28,
-    marginBottom: 32,
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(tutor);
+    }
   };
 
-  const titleStyle = {
-    fontWeight: 700,
-    fontSize: 20,
-    marginBottom: 20,
-    color: '#1e40af',
-    borderBottom: '2px solid #dbeafe',
-    paddingBottom: 10
+  const handleDelete = () => {
+    setShowDeletePopover(true);
   };
 
-  const fieldStyle = {
-    marginBottom: 18,
-    display: 'flex',
-    flexDirection: 'column'
+  const handleDeleteConfirmed = () => {
+    if (onDelete) {
+      onDelete(tutor._id);
+    }
+    setShowDeletePopover(false);
   };
 
-  const labelStyle = {
-    fontWeight: 600,
-    marginBottom: 6,
-    fontSize: 14,
-    color: '#4b5563'
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/admin-dashboard', { state: { activeTab: 'tutors' } });
+    }
   };
 
-  const valueStyle = {
-    fontSize: 16,
-    color: '#111827',
-    padding: '8px 12px',
-    background: '#f9fafb',
-    borderRadius: 6,
-    border: '1px solid #f0f0f0'
+  // Helper function to format qualification type
+  const formatQualificationType = (type) => {
+    if (!type) return 'Not specified';
+    return type.charAt(0).toUpperCase() + type.slice(1);
   };
-  
-  const tagStyle = {
-    display: 'inline-block',
-    padding: '4px 10px',
-    margin: '2px 4px 2px 0',
-    borderRadius: '16px',
-    background: '#dbeafe',
-    color: '#1e40af',
-    fontSize: '14px'
+
+  // Helper function to format qualification status
+  const formatQualificationStatus = (status) => {
+    if (!status) return 'Not specified';
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'text-green-600 bg-green-100';
+      case 'inactive':
+        return 'text-red-600 bg-red-100';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  // Helper function to mask account number
+  const maskAccountNumber = (accountNumber) => {
+    if (!accountNumber) return 'Not provided';
+    if (accountNumber.length <= 4) return accountNumber;
+    const masked = '*'.repeat(accountNumber.length - 4) + accountNumber.slice(-4);
+    return masked;
+  };
+
+  // Helper function to format subjects
+  const formatSubjects = (subjects) => {
+    if (!subjects) return 'Not specified';
+    if (Array.isArray(subjects)) {
+      return subjects.join(', ');
+    }
+    return subjects;
+  };
+
+  // Helper function to format session type
+  const formatSessionType = (type) => {
+    if (!type) return 'Not specified';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  // Helper function to format session timing
+  const formatSessionTiming = (timing) => {
+    if (!timing) return 'Not specified';
+    const timingMap = {
+      'after_fajr': 'Post Fajr',
+      'after_zohar': 'Post Zohar',
+      'after_asar': 'Post Asar',
+      'after_maghrib': 'Post Maghrib',
+      'after_isha': 'Post Isha'
+    };
+    return timingMap[timing] || timing;
   };
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '30px', backgroundColor: '#f8fafc', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-        <div>
-          <h2 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: '#1e40af' }}>Tutor Profile</h2>
-          <p style={{ color: '#64748b', marginTop: 5 }}>{tutor.name}'s complete information</p>
-        </div>
-        <button 
-          onClick={onClose}
-          style={{ 
-            padding: '10px 20px', 
-            background: '#3b82f6', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: 8, 
-            cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>←</span> Back to List
-        </button>
-      </div>
+    <div className="w-full max-w-full mx-auto p-2 bg-white rounded shadow-md border border-blue-100 overflow-x-auto">
+      <h2 className="text-xl font-bold text-white mb-3 pb-2 bg-gradient-to-r from-blue-500 to-blue-700 rounded-t-lg p-3 -mx-3 -mt-3">
+        Tutor Profile
+      </h2>
 
-      {/* Personal Information */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            Personal Information
-          </span>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Name</div>
-            <div style={valueStyle}>{tutor.name || 'Not provided'}</div>
-          </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Email</div>
-            <div style={valueStyle}>{tutor.email || 'Not provided'}</div>
-          </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Phone (Login Username)</div>
-            <div style={valueStyle}>{tutor.phone || 'Not provided'}</div>
-          </div>
-          
-          {/* Login password field removed as requested */}
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Qualifications</div>
-            <div style={valueStyle}>{tutor.qualifications || 'Not provided'}</div>
-          </div>
-        </div>
-      </div>
+      <div className="space-y-3">
+        {/* Main Grid Layout - 2 Columns */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start max-w-7xl mx-auto">
 
-      {/* Center & Subjects */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            Center & Subjects
-          </span>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Assigned Center</div>
-            <div style={valueStyle}>
-              {tutor.assignedCenter ? (
-                typeof tutor.assignedCenter === 'object' ? (
-                  <span style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    color: '#047857'
-                  }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                    {tutor.assignedCenter.name}
-                  </span>
-                ) : 'ID: ' + tutor.assignedCenter
-              ) : 'Not assigned'}
+          {/* Left Column - Personal & Session Info */}
+          <div className="space-y-4">
+            {/* Personal Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[320px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Personal Information</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.name || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.email || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone (Login Username)</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.phone || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(tutor.status)}`}>
+                    {formatQualificationType(tutor.status) || 'Active'}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm min-h-[80px]">
+                    {tutor.address || 'Not provided'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Session Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[400px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Session Information</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                {/* Session Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {formatSessionType(tutor.sessionType)}
+                  </div>
+                </div>
+
+                {/* Session Timing */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Timing</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {formatSessionTiming(tutor.sessionTiming)}
+                  </div>
+                </div>
+
+                {/* Assigned Center */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Center</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.assignedCenter?.name || tutor.assignedCenter || 'Not assigned'}
+                  </div>
+                </div>
+
+                {/* Subjects */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {tutor.subjects && (Array.isArray(tutor.subjects) ? tutor.subjects : [tutor.subjects]).map((subject, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700 border-2 border-blue-700"
+                      >
+                        {subject}
+                      </span>
+                    ))}
+                    {(!tutor.subjects || (Array.isArray(tutor.subjects) && tutor.subjects.length === 0)) && (
+                      <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+                        No subjects assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Subjects</div>
-            <div style={{ ...valueStyle, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {Array.isArray(tutor.subjects) && tutor.subjects.length > 0 
-                ? tutor.subjects.map((subject, index) => (
-                  <span key={index} style={tagStyle}>{subject}</span>
-                ))
-                : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>No subjects assigned</span>}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Session Information */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            Session Information
-          </span>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Session Type</div>
-            <div style={valueStyle}>
-              {tutor.sessionType ? (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: tutor.sessionType === 'arabic' ? '#0369a1' : '#9333ea'
-                }}>
-                  {tutor.sessionType === 'arabic' ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg>
+          {/* Right Column - Educational Details & Other Info */}
+          <div className="space-y-4">
+
+            {/* Educational Details */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[280px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Educational Details</h3>
+
+              <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualification Type</label>
+                    <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                      {formatQualificationType(tutor.qualificationType)}
+                    </div>
+                  </div>
+
+                  {tutor.qualificationType === 'others' && tutor.qualificationOther && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Other Qualification</label>
+                      <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                        {tutor.qualificationOther}
+                      </div>
+                    </div>
                   )}
-                  {tutor.sessionType === 'arabic' ? 'Arabic' : 'Tuition'}
-                </span>
-              ) : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualification Status</label>
+                    <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      tutor.qualificationStatus === 'completed' ? 'bg-green-100 text-green-700' : 
+                      tutor.qualificationStatus === 'pursuing' ? 'bg-yellow-100 text-yellow-700' : 
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {formatQualificationStatus(tutor.qualificationStatus)}
+                    </div>
+                  </div>
+
+                  {tutor.qualificationStatus === 'completed' && tutor.yearOfCompletion && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year of Completion</label>
+                      <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                        {tutor.yearOfCompletion}
+                      </div>
+                    </div>
+                  )}
+
+                  {tutor.sessionType === 'tuition' && (tutor.qualificationType === 'graduation' || tutor.qualificationType === 'intermediate') && tutor.specialization && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                      <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                        {tutor.specialization}
+                      </div>
+                    </div>
+                  )}
+
+                  {tutor.sessionType === 'tuition' && tutor.collegeName && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+                      <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                        {tutor.collegeName}
+                      </div>
+                    </div>
+                  )}
+
+                  {tutor.sessionType === 'arabic' && tutor.madarsahName && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Madarsah Name</label>
+                      <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                        {tutor.madarsahName}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Hadiya Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[150px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Hadiya Information</h3>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Hadiya Amount (₹)</label>
+                <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm font-medium">
+                  ₹{tutor.assignedHadiyaAmount ? Number(tutor.assignedHadiyaAmount).toLocaleString('en-IN') : 'Not specified'}
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[320px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Bank Details</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.aadharNumber || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.bankName || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Branch</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.bankBranch || 'Not provided'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm font-mono">
+                    {maskAccountNumber(tutor.accountNumber)}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm font-mono">
+                    {tutor.ifscCode || 'Not provided'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Session Timing</div>
-            <div style={valueStyle}>
-              {tutor.sessionTiming ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  {tutor.sessionTiming === 'after_fajr' ? 'Post Fajr' : 
-                   tutor.sessionTiming === 'after_zohar' ? 'Post Zohar' : 
-                   tutor.sessionTiming === 'after_asar' ? 'Post Asar' : 
-                   tutor.sessionTiming === 'after_maghrib' ? 'Post Maghrib' : 
-                   tutor.sessionTiming === 'after_isha' ? 'Post Isha' : 
-                   tutor.sessionTiming}
-                </span>
-              ) : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>}
-            </div>
-          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-2">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="px-3 py-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium text-sm shadow"
+          >
+            Close
+          </button>
+
+
         </div>
       </div>
 
-      {/* Hadiya */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-            Hadiya
-          </span>
-        </div>
-        
-        <div style={fieldStyle}>
-          <div style={labelStyle}>Assigned Hadiya Amount</div>
-          <div style={valueStyle}>
-            {tutor.assignedHadiyaAmount ? (
-              <span style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '6px', 
-                color: '#047857', 
-                fontWeight: 600 
-              }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                ₹{tutor.assignedHadiyaAmount}
-              </span>
-            ) : (
-              <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not assigned</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Documents & Identification */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            Identification
-          </span>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Aadhar Number</div>
-            <div style={{ 
-              ...valueStyle, 
-              letterSpacing: '1px',
-              fontFamily: 'monospace',
-              fontSize: '15px'
-            }}>
-              {tutor.aadharNumber ? (
-                <span>
-                  {/* Format Aadhar number as XXXX XXXX XXXX */}
-                  {tutor.aadharNumber.replace(/[^0-9]/g, '').match(/.{1,4}/g)?.join(' ') || tutor.aadharNumber}
-                </span>
-              ) : (
-                <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bank Details */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            Bank Details
-          </span>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Bank Name</div>
-            <div style={valueStyle}>
-              <span style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '6px'
-              }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                {tutor.bankName || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
-              </span>
-            </div>
-          </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Bank Branch</div>
-            <div style={valueStyle}>{tutor.bankBranch || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}</div>
-          </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>Account Number</div>
-            <div style={{ 
-              ...valueStyle, 
-              fontFamily: 'monospace', 
-              letterSpacing: '0.5px',
-              fontSize: '15px'
-            }}>
-              {tutor.accountNumber || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
-            </div>
-          </div>
-          
-          <div style={fieldStyle}>
-            <div style={labelStyle}>IFSC Code</div>
-            <div style={{ 
-              ...valueStyle, 
-              fontFamily: 'monospace', 
-              letterSpacing: '1px',
-              fontSize: '15px',
-              textTransform: 'uppercase'
-            }}>
-              {tutor.ifscCode || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Delete Confirmation Popover */}
+      <Popover
+        isOpen={showDeletePopover}
+        onClose={() => setShowDeletePopover(false)}
+        title="Delete Tutor"
+        message={`Are you sure you want to delete ${tutor.name}? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirmed}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        type="warning"
+      />
     </div>
   );
 };
