@@ -8,22 +8,31 @@ const initialState = {
   phone: '',
   password: '',
   address: '',
-  qualifications: '',
   assignedCenter: '',
   subjects: [], // Always initialize as an array
   sessionType: '',
   sessionTiming: '',
+  // Educational Details
+  qualificationType: '', // For tuition: graduation, intermediate, ssc, others; For arabic: alim, hafiz, others
+  qualificationOther: '', // Text field for 'others' option
+  qualificationStatus: '', // pursuing, completed
+  yearOfCompletion: '',
+  madarsahName: '', // For Arabic session type
+  collegeName: '', // For Tuition session type
+  specialization: '', // For graduation/intermediate
   assignedHadiyaAmount: '',
   bankName: '',
   accountNumber: '',
   bankBranch: '',
   ifscCode: '',
+  aadharNumber: '',
 };
 
 const sessionTypes = [
   { value: 'arabic', label: 'Arabic' },
   { value: 'tuition', label: 'Tuition' },
 ];
+
 const sessionTimings = [
   { value: 'after_fajr', label: 'Post Fajr' },
   { value: 'after_zohar', label: 'Post Zohar' },
@@ -31,6 +40,26 @@ const sessionTimings = [
   { value: 'after_maghrib', label: 'Post Maghrib' },
   { value: 'after_isha', label: 'Post Isha' },
 ];
+
+// Qualification options based on session type
+const tuitionQualifications = [
+  { value: 'graduation', label: 'Graduation' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'ssc', label: 'SSC' },
+  { value: 'others', label: 'Others' },
+];
+
+const arabicQualifications = [
+  { value: 'alim', label: 'Alim' },
+  { value: 'hafiz', label: 'Hafiz' },
+  { value: 'others', label: 'Others' },
+];
+
+const qualificationStatuses = [
+  { value: 'pursuing', label: 'Pursuing' },
+  { value: 'completed', label: 'Completed' },
+];
+
 // Centers will be fetched from backend API
 
 const subjectsList = [
@@ -50,6 +79,8 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   const [showCenterDropdown, setShowCenterDropdown] = useState(false);
   const [centersError, setCentersError] = useState(null);
   const [showSuccessPopover, setShowSuccessPopover] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -145,12 +176,8 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   };
 
   // Initialize the form with provided data or defaults
-  const safeInitialForm = {
-    ...initialState,
-    ...formData
-  };
-  const [localForm, setLocalForm] = useState(safeInitialForm);
-  const [errors, setErrors] = useState({});
+  const [localForm, setLocalForm] = useState(initialState);
+  const [validationErrors, setValidationErrors] = useState({});
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({
     length: false,
@@ -159,25 +186,6 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
     number: false,
     specialChar: false,
   });
-
-  // Email validation function
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return false;
-    
-    const [localPart, domain] = email.split('@');
-    const domainParts = domain.split('.');
-    
-    return (
-      localPart.length >= 1 && localPart.length <= 64 &&
-      domain.length >= 3 && domain.length <= 255 &&
-      domainParts[domainParts.length - 1].length >= 2 && 
-      domainParts[domainParts.length - 1].length <= 6
-    );
-  };
-
-  // Real-time validation state
-  const [validationErrors, setValidationErrors] = useState({});
 
   // Handle input changes with validation
   const handleChange = (e) => {
@@ -190,17 +198,35 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       if (newValue !== originalValue) {
         setValidationErrors(prev => ({ ...prev, address: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
       }
-    } else if (name === 'qualifications') {
+    } else if (name === 'qualificationOther') {
       const originalValue = value;
       newValue = value.replace(/[^a-zA-Z0-9\s,.-]/g, '');
       if (newValue !== originalValue) {
-        setValidationErrors(prev => ({ ...prev, qualifications: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
+        setValidationErrors(prev => ({ ...prev, [name]: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
+      }
+      if (newValue.length > 50) {
+        newValue = newValue.substring(0, 50);
+        setValidationErrors(prev => ({ ...prev, [name]: 'Qualification details cannot exceed 50 characters' }));
+      }
+    } else if (name === 'madarsahName') {
+      const originalValue = value;
+      newValue = value.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+      if (newValue !== originalValue) {
+        setValidationErrors(prev => ({ ...prev, [name]: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
+      }
+      if (newValue.length > 50) {
+        newValue = newValue.substring(0, 50);
+        setValidationErrors(prev => ({ ...prev, [name]: 'Madarsah name cannot exceed 50 characters' }));
       }
     } else if (name === 'name') {
       const originalValue = value;
       newValue = value.replace(/[^a-zA-Z'\s]/g, '');
       if (newValue !== originalValue) {
         setValidationErrors(prev => ({ ...prev, name: 'Only letters, spaces, and apostrophes are allowed' }));
+      }
+      if (newValue.length > 50) {
+        newValue = newValue.substring(0, 50);
+        setValidationErrors(prev => ({ ...prev, name: 'Name cannot exceed 50 characters' }));
       }
     } else if (name === 'bankName') {
       const originalValue = value;
@@ -210,9 +236,9 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       }
     } else if (name === 'bankBranch') {
       const originalValue = value;
-      newValue = value.replace(/[^a-zA-Z\s]/g, '');
+      newValue = value.replace(/[^a-zA-Z0-9\s]/g, '');
       if (newValue !== originalValue) {
-        setValidationErrors(prev => ({ ...prev, bankBranch: 'Only letters and spaces are allowed' }));
+        setValidationErrors(prev => ({ ...prev, bankBranch: 'Only letters, numbers, and spaces are allowed' }));
       }
     }
 
@@ -227,12 +253,6 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       setValidationErrors(errors);
     }
 
-    // Email validation
-    if (name === 'email') {
-      if (!isValidEmail(value)) {
-        errors[name] = 'Invalid email address';
-      }
-    }
     // Password strength validation
     else if (name === 'password') {
       const password = value;
@@ -250,12 +270,11 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
         errors[name] = 'Password must be at least 8 characters';
       }
     }
-    else if (name === 'name' && value.length > 60) {
-      errors[name] = 'Name must be 60 characters or less';
-    }
+
     else if (name === 'address') {
-      if (newValue.length > 60) {
-        errors[name] = 'Address must be 60 characters or less';
+      if (newValue.length > 200) {
+        newValue = newValue.substring(0, 200);
+        errors[name] = 'Address cannot exceed 200 characters';
       }
     }
     else if (name === 'assignedHadiyaAmount') {
@@ -279,29 +298,61 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       setValidationErrors(errors);
       return;
     }
-    else if (name === 'bankName' && value.length > 30) {
-      errors[name] = 'Bank name must be 30 characters or less';
+    else if (name === 'bankName') {
+      if (newValue.length > 30) {
+        newValue = newValue.substring(0, 30);
+        errors[name] = 'Bank name cannot exceed 30 characters';
+      }
     }
-    else if (name === 'bankBranch' && value.length > 30) {
-      errors[name] = 'Bank branch must be 30 characters or less';
+    else if (name === 'bankBranch') {
+      if (newValue.length > 30) {
+        newValue = newValue.substring(0, 30);
+        errors[name] = 'Bank branch cannot exceed 30 characters';
+      }
     }
     else if (name === 'accountNumber') {
       const originalValue = value;
       const digitsOnly = originalValue.replace(/\D/g, '');
-      if (digitsOnly.length <= 18) {
+      
+      if (digitsOnly.length <= 20) {
         setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+        
+        // Validate length
+        if (digitsOnly.length > 0 && digitsOnly.length < 5) {
+          setValidationErrors(prev => ({ ...prev, accountNumber: 'Account number must be at least 5 digits' }));
+        } else if (digitsOnly.length > 20) {
+          setValidationErrors(prev => ({ ...prev, accountNumber: 'Account number cannot exceed 20 digits' }));
+        } else {
+          // Clear error if length is valid
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.accountNumber;
+            return newErrors;
+          });
+        }
       }
+      
       // Set error if non-digit characters were removed
       if (digitsOnly !== originalValue) {
         setValidationErrors(prev => ({ ...prev, accountNumber: 'Only digits are allowed' }));
-      } else {
-        // Clear error if no non-digit characters were present
-        setValidationErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.accountNumber;
-          return newErrors;
-        });
       }
+      return;
+    }
+    else if (name === 'yearOfCompletion') {
+      // Only allow digits and limit to 4 characters (year format)
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 4) {
+        setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+      }
+      
+      // Validate year range
+      const year = parseInt(digitsOnly);
+      const currentYear = new Date().getFullYear();
+      if (digitsOnly.length === 4 && (year < 1950 || year > currentYear + 10)) {
+        errors[name] = `Year must be between 1950 and ${currentYear + 10}`;
+      }
+      
+      setValidationErrors(errors);
       return;
     }
     else if (name === 'ifscCode') {
@@ -401,8 +452,8 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
     if (!localForm.phone || !/^[0-9]{10}$/.test(localForm.phone)) {
       errs.phone = 'Valid 10-digit phone number is required.';
     }
-    if (!localForm.password || localForm.password.length < 6) {
-      errs.password = 'Password must be at least 6 characters.';
+    if (!localForm.password || localForm.password.length < 8) {
+      errs.password = 'Password must be at least 8 characters.';
     }
     if (!localForm.assignedCenter) {
       errs.assignedCenter = 'Assigned Center is required.';
@@ -410,6 +461,16 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
     if (!localForm.assignedHadiyaAmount || isNaN(localForm.assignedHadiyaAmount) || Number(localForm.assignedHadiyaAmount) <= 0) {
       errs.assignedHadiyaAmount = 'Valid Hadiya amount is required.';
     }
+
+    // Specialization validation for graduation/intermediate
+    if (localForm.sessionType === 'tuition' && (localForm.qualificationType === 'graduation' || localForm.qualificationType === 'intermediate')) {
+      if (!localForm.specialization || localForm.specialization.trim() === '') {
+        errs.specialization = 'Specialization is required for graduation or intermediate.';
+      } else if (localForm.specialization.length > 50) {
+        errs.specialization = 'Specialization cannot exceed 50 characters.';
+      }
+    }
+    
     
     // IMPORTANT: Process subjects to ensure it's ALWAYS an array
     let subjectsArray;
@@ -462,89 +523,51 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Check password strength if password is provided and not empty
-    if (localForm.password && localForm.password.trim() !== '') {
-      const isPasswordStrong = (
-        passwordStrength.length &&
-        passwordStrength.uppercase &&
-        passwordStrength.lowercase &&
-        passwordStrength.number &&
-        passwordStrength.specialChar
-      );
-      
-      if (!isPasswordStrong) {
-        // Show error and prevent submission
-        setValidationErrors(prev => ({
-          ...prev,
-          password: 'Password does not meet strength requirements'
-        }));
-        return;
-      }
-    }
-    
-    // Adding extensive debug logs to trace the subjects field
-    console.log('SUBMIT - Initial form state:', { 
-      subjects: localForm.subjects,
-      isArray: Array.isArray(localForm.subjects),
-      type: typeof localForm.subjects
-    });
-    
-    const errs = validate();
-    
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      console.log('Form has validation errors:', errs);
+    setIsFormSubmitting(true);
+  
+    // Validate form
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setIsFormSubmitting(false);
       return;
     }
-    
-    // Create a deep copy of the form data
-    const formToSubmit = JSON.parse(JSON.stringify(localForm));
-    
-    // CRITICAL FIX: Force subjects to be an array no matter what
-    if (!formToSubmit.subjects) {
-      // If no subjects, use empty array
-      formToSubmit.subjects = [];
-      console.log('Using empty array for subjects');
-    } else if (!Array.isArray(formToSubmit.subjects)) {
-      // If not an array, convert to array with single element
-      formToSubmit.subjects = [formToSubmit.subjects];
-      console.log('Converted single subject to array:', formToSubmit.subjects);
-      
-      // Update the form with the array version
-      setLocalForm(prev => {
-        const updated = { ...prev, subjects: formToSubmit.subjects };
-        console.log('Updated form with array subjects:', updated.subjects);
-        return updated;
-      });
-    } else {
-      // Already an array, just log it
-      console.log('Subjects already an array:', formToSubmit.subjects);
-    }
-    
-    // Final verification
-    console.log('FINAL FORM TO SUBMIT:', { 
-      subjects: formToSubmit.subjects,
-      isArray: Array.isArray(formToSubmit.subjects)
+  
+    // Convert subjects array to string
+    const subjectsString = localForm.subjects.join(',');
+  
+    // Prepare form data with proper types
+    const formData = {
+      ...localForm,
+      subjects: subjectsString,
+      assignedHadiyaAmount: Number(localForm.assignedHadiyaAmount),
+      yearOfCompletion: Number(localForm.yearOfCompletion)
+    };
+
+    // Remove optional fields that are empty to satisfy backend validation
+    Object.keys(formData).forEach((key) => {
+      const val = formData[key];
+      if (typeof val === 'string' && val.trim() === '') {
+        delete formData[key];
+      }
     });
-    
-    // Submit the form with processed data
+  
     try {
-      setIsFormSubmitting(true);
-      await onSubmit(formToSubmit);
+      // Call API to add tutor
+      await onSubmit(formData);
+    
+      // Reset form on success
+      setLocalForm(initialState);
+      setValidationErrors({});
+      setSuccessMessage('Tutor added successfully!');  // store success text
       setShowSuccessPopover(true);
-      
-      // Reset password strength indicators
-      setPasswordStrength({
-        length: false,
-        uppercase: false,
-        lowercase: false,
-        number: false,
-        specialChar: false,
-      });
+    
+      // Hide popup after 5 seconds
+      setTimeout(() => setShowSuccessPopover(false), 5000);
     } catch (error) {
-      console.error('Error adding tutor:', error);
-      // Handle error if needed
+      // Set the error in validation state
+      setValidationErrors({ general: error.message || 'Failed to add tutor' });
+      setShowErrorPopover(true);
     } finally {
       setIsFormSubmitting(false);
     }
@@ -559,23 +582,23 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   });
 
   return (
-    <div className="max-w-4xl mx-auto p-4 bg-white rounded-xl shadow-lg border border-blue-100">
-      <h2 className="text-2xl font-bold text-white mb-4 pb-2 bg-gradient-to-r from-blue-500 to-blue-700 rounded-t-lg p-4 -mx-4 -mt-4">
+    <div className="w-full max-w-full mx-auto p-2 bg-white rounded shadow-md border border-blue-100 overflow-x-auto">
+      <h2 className="text-xl font-bold text-white mb-3 pb-2 bg-gradient-to-r from-blue-500 to-blue-700 rounded-t-lg p-3 -mx-3 -mt-3">
         Add New Tutor
       </h2>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Main Grid - 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-          
-          {/* Left Column */}
-          <div className="space-y-3">
-            
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Main Grid Layout - 2 Columns */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start max-w-7xl mx-auto">
+
+          {/* Left Column - Personal & Session Info */}
+          <div className="space-y-4">
             {/* Personal Information */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3">Personal Information</h3>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[320px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Personal Information</h3>
               
-              <div className="mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Full Name <span className="text-red-600">*</span>
                 </label>
@@ -591,17 +614,18 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                     }
                   }}
                   name="name"
-                  className={`w-full px-4 py-2 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  maxLength={50}
+                  className={`w-full px-3 py-1.5 border ${validationErrors.name ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm`}
                 />
                 {validationErrors.name && (
                   <div className="text-red-500 text-sm mt-1">{validationErrors.name}</div>
                 )}
-                <div className="text-gray-500 text-sm mt-1">
-                  {localForm.name ? localForm.name.length : 0}/60 characters
+                <div className="text-xs text-gray-500 mt-1">
+                  {(localForm.name || '').length}/50 characters
                 </div>
               </div>
-              
-              <div className="mb-4">
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email <span className="text-red-600">*</span>
                 </label>
@@ -610,57 +634,39 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   value={localForm.email || ''}
                   onChange={handleChange}
                   name="email"
-                  className={`w-full px-4 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  maxLength={50}
+                  className={`w-full px-3 py-1.5 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  placeholder="Enter email"
                   required
                 />
                 {validationErrors.email && (
                   <div className="text-red-500 text-sm mt-1">{validationErrors.email}</div>
                 )}
+                <div className="text-xs text-gray-500 mt-1">
+                  {(localForm.email || '').length}/50 characters
+                </div>
               </div>
-              
-              <div className="mb-4">
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone <span className="text-red-600">*</span> <span className="text-gray-500">(This will be the tutor's login username)</span>
+                  Phone <span className="text-red-600">*</span> <span className="text-gray-500">(Login username)</span>
                 </label>
-                <input 
+                <input
                   type="tel"
                   value={localForm.phone || ''}
                   onChange={handleInputChange}
                   name="phone"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="1234567890"
                   required
                 />
                 <div className="text-gray-500 text-sm mt-1">
                   Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
                 </div>
-                {errors.phone && <div className="text-red-500 text-sm mt-1">{errors.phone}</div>}
+                {validationErrors.phone && <div className="text-red-500 text-sm mt-1">{validationErrors.phone}</div>}
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address <span className="text-red-600">*</span>
-                </label>
-                <textarea
-                  value={localForm.address || ''}
-                  onChange={(e) => handleChange(e)}
-                  onKeyPress={(e) => {
-                    const key = e.key;
-                    if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
-                      e.preventDefault();
-                      setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
-                    }
-                  }}
-                  name="address"
-                  className={`mt-1 block w-full px-3 py-2 border ${validationErrors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                  rows="3"
-                  required
-                  maxLength={60}
-                />
-                {validationErrors.address && <div className="text-red-500 text-sm mt-1">{validationErrors.address}</div>}
-              </div>
-              
-              <div className="mb-4">
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Login Password <span className="text-red-600">*</span>
                 </label>
@@ -670,7 +676,8 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                     value={localForm.password || ''}
                     onChange={handleChange}
                     name="password"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    maxLength={10}
+                    className={`w-full px-3 py-1.5 border ${validationErrors.password ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
                     placeholder="Enter password"
                   />
                   <button
@@ -694,74 +701,108 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   <div className="text-red-500 text-sm mt-1">{validationErrors.password}</div>
                 )}
                 <div className="text-gray-500 text-sm mt-1">
-                  <p>{localForm.password ? localForm.password.length : 0}/10 characters</p>
-                </div>
-                {/* Password strength indicator */}
-                <div className="mt-2">
-                  <p className="text-sm font-medium text-gray-700">Password must contain:</p>
-                  <ul className="text-sm text-gray-600">
-                    <li className={passwordStrength.length ? 'text-green-500' : 'text-gray-500'}>
-                      {passwordStrength.length ? '✓' : '✗'} At least 8 characters
-                    </li>
-                    <li className={passwordStrength.uppercase ? 'text-green-500' : 'text-gray-500'}>
-                      {passwordStrength.uppercase ? '✓' : '✗'} At least one uppercase letter
-                    </li>
-                    <li className={passwordStrength.lowercase ? 'text-green-500' : 'text-gray-500'}>
-                      {passwordStrength.lowercase ? '✓' : '✗'} At least one lowercase letter
-                    </li>
-                    <li className={passwordStrength.number ? 'text-green-500' : 'text-gray-500'}>
-                      {passwordStrength.number ? '✓' : '✗'} At least one number
-                    </li>
-                    <li className={passwordStrength.specialChar ? 'text-green-500' : 'text-gray-500'}>
-                      {passwordStrength.specialChar ? '✓' : '✗'} At least one special character
-                    </li>
-                  </ul>
+                  {localForm.password ? localForm.password.length : 0}/10 characters
                 </div>
               </div>
-              
-              <div className="mb-4">
+
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Qualifications
+                  Address <span className="text-red-600">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={localForm.qualifications || ''}
-                  onChange={handleChange}
+                <textarea
+                  value={localForm.address || ''}
+                  onChange={(e) => handleChange(e)}
                   onKeyPress={(e) => {
                     const key = e.key;
                     if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
                       e.preventDefault();
-                      setValidationErrors(prev => ({ ...prev, qualifications: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
+                      setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
                     }
                   }}
-                  name="qualifications"
-                  className={`w-full px-4 py-2 border ${validationErrors.qualifications ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                  name="address"
+                  maxLength={200}
+                  className={`w-full px-3 py-1.5 border ${validationErrors.address ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-vertical`}
+                  rows="4"
+                  style={{ minHeight: '80px' }}
+                  required
                 />
-                {validationErrors.qualifications && (
-                  <div className="text-red-500 text-sm mt-1">{validationErrors.qualifications}</div>
-                )}
+                {validationErrors.address && <div className="text-red-500 text-sm mt-1">{validationErrors.address}</div>}
+                <div className="text-xs text-gray-500 mt-1">
+                  {(localForm.address || '').length}/200 characters
+                </div>
               </div>
             </div>
+
+            {/* Compact Password strength indicator */}
+            {localForm.password && (
+              <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                <div className="flex flex-wrap gap-2">
+                  <span className={passwordStrength.length ? 'text-green-600' : 'text-gray-500'}>
+                    {passwordStrength.length ? '✓' : '✗'} 8+ chars
+                  </span>
+                  <span className={passwordStrength.uppercase || passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'}>
+                    {(passwordStrength.uppercase || passwordStrength.lowercase) ? '✓' : '✗'} Letter
+                  </span>
+                  <span className={passwordStrength.number ? 'text-green-600' : 'text-gray-500'}>
+                    {passwordStrength.number ? '✓' : '✗'} Number
+                  </span>
+                </div>
+              </div>
+            )}
+            </div>
+
+            {/* Session Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[400px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Session Information</h3>
             
-          </div>
-          
-          {/* Right Column */}
-          <div className="space-y-3">
-            
-            {/* Center Information */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3">Center Information</h3>
-              
-              <div className="mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assigned Center <span className="text-red-600">*</span> <span className="text-gray-500">(Select the center to assign this tutor.)</span>
+                  Session Type <span className="text-red-600">*</span>
                 </label>
+                <select
+                  value={localForm.sessionType || ''}
+                  onChange={handleInputChange}
+                  name="sessionType"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                  required
+                >
+                  <option value="">Select Session Type</option>
+                  {sessionTypes.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Session Timing <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={localForm.sessionTiming || ''}
+                  onChange={handleInputChange}
+                  name="sessionTiming"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                  required
+                >
+                  <option value="">Select Timing</option>
+                  {sessionTimings.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+            
+            {/* Assigned Center - Full Width */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned Center <span className="text-red-600">*</span>
+              </label>
                 {centersError ? (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <span className="block sm:inline">{centersError}</span>
-                    <div className="mt-2">
-                      <button type="button" onClick={handleRetryCenters} className="px-4 py-2 bg-red-500 hover:bg-red-700 text-white font-bold rounded">Retry</button>
-                    </div>
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm mb-2">
+                    <span className="block">{centersError}</span>
+                    <button type="button" onClick={handleRetryCenters} className="mt-1 px-2 py-1 bg-red-500 hover:bg-red-700 text-white text-xs rounded">Retry</button>
                   </div>
                 ) : null}
                 <div className="relative">
@@ -772,15 +813,15 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                     onFocus={() => setShowCenterDropdown(true)}
                     onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
                     placeholder="Search for a center"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                   />
                   {showCenterDropdown && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-auto">
+                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-60 overflow-auto">
                       {filteredCenters.map(center => (
-                        <div 
+                        <div
                           key={center._id}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                          onMouseDown={() => { // use onMouseDown to prevent onBlur from closing immediately
+                          className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer"
+                          onMouseDown={() => {
                             setLocalForm(prev => ({ ...prev, assignedCenter: center._id }));
                             setCenterQuery(center.name);
                             setShowCenterDropdown(false);
@@ -792,148 +833,264 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                     </div>
                   )}
                 </div>
-                {errors.assignedCenter && (
-                  <div className="text-red-500 text-sm mt-1">{errors.assignedCenter}</div>
-                )}
-              </div>
+              {validationErrors.assignedCenter && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.assignedCenter}</div>
+              )}
             </div>
-            
-            {/* Session Information */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3">Session Information</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Session Type <span className="text-red-600">*</span>
-                </label>
-                <select
-                  value={localForm.sessionType || ''}
-                  onChange={handleInputChange}
-                  name="sessionType"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  required
-                >
-                  <option value="">Select Session Type</option>
-                  {sessionTypes.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+
+            {/* Subjects - Compact */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subjects <span className="text-red-600">*</span>
+              </label>
+              <p className="text-sm text-gray-500 mb-2">Select subjects by clicking on them</p>
+              <div className="flex flex-wrap gap-2">
+                {subjectsList.map(subject => (
+                  <button
+                    type="button"
+                    key={subject.value}
+                    onClick={() => {
+                      let currentSubjects = [];
+                      if (localForm.subjects) {
+                        currentSubjects = Array.isArray(localForm.subjects)
+                          ? [...localForm.subjects]
+                          : [localForm.subjects];
+                      }
+
+                      const newSubjects = currentSubjects.includes(subject.value)
+                        ? currentSubjects.filter(s => s !== subject.value)
+                        : [...currentSubjects, subject.value];
+
+                      setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 ${
+                      localForm.subjects?.includes(subject.value)
+                        ? 'bg-blue-100 text-blue-700 border-blue-700'
+                        : 'bg-gray-50 text-gray-700 border-black hover:bg-gray-100'
+                    }`}
+                  >
+                    {subject.label}
+                  </button>
+                ))}
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Session Timing <span className="text-red-600">*</span>
-                </label>
-                <select
-                  value={localForm.sessionTiming || ''}
-                  onChange={handleInputChange}
-                  name="sessionTiming"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  required
-                >
-                  <option value="">Select Timing</option>
-                  {sessionTimings.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
+              {validationErrors.subjects && <div className="text-red-500 text-sm mt-1">{validationErrors.subjects}</div>}
             </div>
-            
-            {/* Subjects */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3">Subjects</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Subject(s) <span className="text-red-600">*</span> <span className="text-gray-500">(Required. Click to select multiple)</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                  {subjectsList.map(subject => (
-                    <label 
-                      key={subject.value} 
-                      className={`px-3 py-1 text-sm rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value) ? 'bg-blue-600 text-white font-medium' : 'bg-gray-100 text-gray-700'}`}
-                      tabIndex="0"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.currentTarget.querySelector('input[type="checkbox"]').click();
-                        }
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        tabIndex="-1"
-                        checked={localForm.subjects && (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]).includes(subject.value)}
-                        onChange={() => {
-                          // Always ensure currentSubjects is an array
-                          let currentSubjects = [];
-                          if (localForm.subjects) {
-                            currentSubjects = Array.isArray(localForm.subjects) 
-                              ? [...localForm.subjects] 
-                              : [localForm.subjects];
-                          }
-                          
-                          // Create new array based on selection/deselection
-                          const newSubjects = currentSubjects.includes(subject.value)
-                            ? currentSubjects.filter(s => s !== subject.value)
-                            : [...currentSubjects, subject.value];
-                          
-                          // Update state with new array
-                          setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
-                        }}
-                      />
-                      {subject.label}
-                    </label>
-                  ))}
-                </div>
-                <div className="text-gray-500 text-sm mt-1">
-                  Selected subjects: {
-                    (() => {
-                      // Process subjects to ensure it's an array
-                      const subjectsArr = !localForm.subjects ? [] :
-                        (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
-                        
-                      return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
-                    })()
-                  }
-                </div>
-                {errors.subjects && <div className="text-red-500 text-sm mt-1">{errors.subjects}</div>}
-              </div>
             </div>
-            
-            {/* Hadiya Information */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3">Hadiya Information</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assigned Hadiya Amount <span className="text-red-600">*</span> (₹)
-                </label>
-                <input
-                  type="number"
-                  value={localForm.assignedHadiyaAmount || ''}
-                  onChange={handleChange}
-                  name="assignedHadiyaAmount"
-                  max={100000}
-                  className={`w-full px-4 py-2 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
-                  required
-                />
-                {validationErrors.assignedHadiyaAmount && (
-                  <div className="text-red-500 text-sm mt-1">{validationErrors.assignedHadiyaAmount}</div>
-                )}
-              </div>
-            </div>
-            
           </div>
-        </div>
-        
-        {/* Bank Details */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold text-blue-800 mb-3">Bank Details</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="mb-4">
+
+          {/* Right Column - Educational Details & Other Info */}
+          <div className="space-y-4">
+
+            {/* Educational Details */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[280px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Educational Details</h3>
+              
+              <div className="flex-1">
+              {localForm.sessionType ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Qualification <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={localForm.qualificationType || ''}
+                    onChange={handleInputChange}
+                    name="qualificationType"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    required
+                  >
+                    <option value="">Select Qualification</option>
+                    {(localForm.sessionType === 'tuition' ? tuitionQualifications : arabicQualifications).map(q => (
+                      <option key={q.value} value={q.value}>{q.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {localForm.qualificationType === 'others' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Specify Other Qualification <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localForm.qualificationOther || ''}
+                      onChange={handleChange}
+                      name="qualificationOther"
+                      maxLength={50}
+                      className={`w-full px-3 py-1.5 border ${validationErrors.qualificationOther ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                      placeholder="Enter qualification details"
+                      required
+                    />
+                    {validationErrors.qualificationOther && (
+                      <div className="text-red-500 text-sm mt-1">{validationErrors.qualificationOther}</div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {(localForm.qualificationOther || '').length}/50 characters
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={localForm.qualificationStatus || ''}
+                    onChange={handleInputChange}
+                    name="qualificationStatus"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    required
+                  >
+                    <option value="">Select Status</option>
+                    {qualificationStatuses.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Year of Completion <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={localForm.yearOfCompletion || ''}
+                    onChange={handleChange}
+                    name="yearOfCompletion"
+                    className={`w-full px-3 py-1.5 border ${validationErrors.yearOfCompletion ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                    placeholder="YYYY"
+                    maxLength={4}
+                    required
+                  />
+                  {validationErrors.yearOfCompletion && (
+                    <div className="text-red-500 text-sm mt-1">{validationErrors.yearOfCompletion}</div>
+                  )}
+                </div>
+
+                {(localForm.sessionType === 'tuition' && (localForm.qualificationType === 'graduation' || localForm.qualificationType === 'intermediate')) && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Specialization <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localForm.specialization || ''}
+                      onChange={handleChange}
+                      name="specialization"
+                      maxLength={50}
+                      className={`w-full px-3 py-1.5 border ${validationErrors.specialization ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                      placeholder="e.g., Computer Science"
+                      required
+                    />
+                    {validationErrors.specialization && (
+                      <div className="text-red-500 text-sm mt-1">{validationErrors.specialization}</div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {(localForm.specialization || '').length}/50 characters
+                    </div>
+                  </div>
+                )}
+
+                {localForm.sessionType === 'tuition' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      College Name <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localForm.collegeName || ''}
+                      onChange={handleChange}
+                      name="collegeName"
+                      maxLength={50}
+                      className={`w-full px-3 py-1.5 border ${validationErrors.collegeName ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                      placeholder="Enter college name"
+                      required
+                    />
+                    {validationErrors.collegeName && (
+                      <div className="text-red-500 text-sm mt-1">{validationErrors.collegeName}</div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {(localForm.collegeName || '').length}/50 characters
+                    </div>
+                  </div>
+                )}
+
+                {localForm.sessionType === 'arabic' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Madarsah Name <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localForm.madarsahName || ''}
+                      onChange={handleChange}
+                      name="madarsahName"
+                      maxLength={50}
+                      className={`w-full px-3 py-1.5 border ${validationErrors.madarsahName ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                      placeholder="Enter madarsah name"
+                      required
+                    />
+                    {validationErrors.madarsahName && (
+                      <div className="text-red-500 text-sm mt-1">{validationErrors.madarsahName}</div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {(localForm.madarsahName || '').length}/50 characters
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>Please select a session type first to configure educational details.</p>
+              </div>
+            )}
+              </div>
+          </div>
+
+            {/* Hadiya Information */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[150px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Hadiya Information</h3>
+              
+              <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned Hadiya Amount <span className="text-red-600">*</span> (₹)
+              </label>
+              <input
+                type="number"
+                value={localForm.assignedHadiyaAmount || ''}
+                onChange={handleChange}
+                name="assignedHadiyaAmount"
+                max={100000}
+                onKeyPress={(e) => {
+                  const currentValue = e.target.value;
+                  const key = e.key;
+                  
+                  // Prevent 'e' at the beginning
+                  if (currentValue === '' && (key === 'e' || key === 'E')) {
+                    e.preventDefault();
+                    return;
+                  }
+                  
+                  // Only allow digits
+                  if (!/^[0-9]$/.test(key)) {
+                    e.preventDefault();
+                  }
+                }}
+                className={`w-full px-3 py-1.5 border ${validationErrors.assignedHadiyaAmount ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                required
+              />
+              {validationErrors.assignedHadiyaAmount && (
+                <div className="text-red-500 text-sm mt-1">{validationErrors.assignedHadiyaAmount}</div>
+              )}
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[320px] flex flex-col">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Bank Details</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Aadhar Number
               </label>
@@ -942,16 +1099,16 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 value={localForm.aadharNumber || ''}
                 onChange={handleInputChange}
                 name="aadharNumber"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 placeholder="XXXX XXXX XXXX"
               />
               <div className="text-gray-500 text-sm mt-1">
                 12 digits only. Spaces will be added automatically after every 4 digits.
               </div>
-              {errors.aadharNumber && <div className="text-red-500 text-sm mt-1">{errors.aadharNumber}</div>}
+              {validationErrors.aadharNumber && <div className="text-red-500 text-sm mt-1">{validationErrors.aadharNumber}</div>}
             </div>
             
-            <div className="mb-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Bank Name
               </label>
@@ -968,20 +1125,20 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 }}
                 name="bankName"
                 maxLength={30}
-                className={`w-full px-4 py-2 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                className={`w-full px-3 py-1.5 border ${validationErrors.bankName ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
                 placeholder="e.g., State Bank of India"
               />
               {validationErrors.bankName && (
                 <div className="text-red-500 text-sm mt-1">{validationErrors.bankName}</div>
               )}
-              <div className="text-gray-500 text-sm mt-1">
-                {localForm.bankName ? localForm.bankName.length : 0}/30 characters
+              <div className="text-xs text-gray-500 mt-1">
+                {(localForm.bankName || '').length}/30 characters
               </div>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="mb-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Bank Branch
               </label>
@@ -991,25 +1148,25 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 onChange={handleChange}
                 onKeyPress={(e) => {
                   const key = e.key;
-                  if (!/^[a-zA-Z'\s]$/.test(key)) {
+                  if (!/^[a-zA-Z0-9\s]$/.test(key)) {
                     e.preventDefault();
-                    setValidationErrors(prev => ({ ...prev, bankBranch: `Character '${key}' is not allowed. Only letters and spaces are allowed.` }));
+                    setValidationErrors(prev => ({ ...prev, bankBranch: `Character '${key}' is not allowed. Only letters, numbers, and spaces are allowed.` }));
                   }
                 }}
                 name="bankBranch"
                 maxLength={30}
-                className={`w-full px-4 py-2 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
+                className={`w-full px-3 py-1.5 border ${validationErrors.bankBranch ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition`}
                 placeholder="e.g., Main Branch"
               />
               {validationErrors.bankBranch && (
                 <div className="text-red-500 text-sm mt-1">{validationErrors.bankBranch}</div>
               )}
-              <div className="text-gray-500 text-sm mt-1">
-                {localForm.bankBranch ? localForm.bankBranch.length : 0}/30 characters
+              <div className="text-xs text-gray-500 mt-1">
+                {(localForm.bankBranch || '').length}/30 characters
               </div>
             </div>
             
-            <div className="mb-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Account Number
               </label>
@@ -1018,21 +1175,19 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 value={localForm.accountNumber || ''}
                 onChange={handleInputChange}
                 name="accountNumber"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                placeholder="11-18 digits"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                placeholder="5-20 digits"
+                maxLength={20}
               />
-              <div className="text-gray-500 text-sm mt-1">
-                Account number should be between 11-18 digits.
+              <div className="text-xs text-gray-500 mt-1">
+                {(localForm.accountNumber || '').length}/20 digits (5-20 required)
               </div>
-              {errors.accountNumber && <div className="text-red-500 text-sm mt-1">{errors.accountNumber}</div>}
-              {validationErrors.accountNumber && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.accountNumber}</div>
-              )}
+              {validationErrors.accountNumber && <div className="text-red-500 text-sm mt-1">{validationErrors.accountNumber}</div>}
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="mb-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 IFSC Code
               </label>
@@ -1044,43 +1199,52 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   setLocalForm(prev => ({ ...prev, ifscCode: value }));
                 }}
                 name="ifscCode"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 placeholder="e.g., SBIN0123456"
                 maxLength={11}
               />
               <div className="text-gray-500 text-sm mt-1">
                 Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
               </div>
-              {errors.ifscCode && <div className="text-red-500 text-sm mt-1">{errors.ifscCode}</div>}
+              {validationErrors.ifscCode && <div className="text-red-500 text-sm mt-1">{validationErrors.ifscCode}</div>}
+            </div>
             </div>
           </div>
         </div>
         
-        {/* Form error summary */}
+        {/* Form error summary - Full Width */}
         {Object.keys(validationErrors).length > 0 && (
-          <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-lg">
+          <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded text-sm">
             <p className="font-medium">Please fix the following errors:</p>
             <ul className="list-disc pl-5 mt-2">
               {Object.entries(validationErrors).map(([field, error]) => (
-                <li key={field}>{error}</li>
+                <li key={`error-${field}`}>{error}</li>
               ))}
             </ul>
           </div>
         )}
         
+        </div>
+        
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-3 pt-3">
+        <div className="flex justify-end space-x-3 pt-2">
           <button
             type="button"
-            onClick={() => navigate('/admin-dashboard', { state: { activeTab: 'tutors' } })}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-sm shadow"
+            onClick={() => {
+              // Reset form to initial state
+              setLocalForm(initialState);
+              setValidationErrors({});
+              // Navigate back to admin dashboard
+              navigate('/admin-dashboard', { state: { activeTab: 'tutors' } });
+            }}
+            className="px-3 py-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium text-sm shadow"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || isFormSubmitting}
-            className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-sm shadow hover:shadow-md"
+            className="px-3 py-1.5 text-white bg-blue-600 hover:bg-blue-700 rounded font-medium text-sm shadow hover:shadow-md"
           >
             {isSubmitting || isFormSubmitting ? 'Submitting...' : 'Add Tutor'}
           </button>
@@ -1098,6 +1262,15 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
         title="Success!"
         message="Tutor has been added successfully"
         type="success"
+      />
+      
+      {/* Error Popover */}
+      <Popover
+        isOpen={showErrorPopover}
+        onClose={() => setShowErrorPopover(false)}
+        title="Error!"
+        message="Failed to add tutor. Please try again."
+        type="error"
       />
       
       {/* Auto-redirect after success - matching the UpdateTutorForm behavior */}
