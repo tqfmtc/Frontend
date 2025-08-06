@@ -469,15 +469,15 @@ const TutorOverview = () => {
                   <div className="flex gap-4 w-full sm:w-auto justify-end">
                     <button
                       onClick={handleMarkAttendance}
-                      disabled={!locationMatch || attendanceMarked}
+                      disabled={!locationMatch || attendanceMarked || currentTime.getDay() === 0}
                       className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center flex-1 sm:flex-none text-base font-medium shadow-lg ${
-                        locationMatch && !attendanceMarked
+                        locationMatch && !attendanceMarked && currentTime.getDay() !== 0
                           ? 'bg-gradient-to-r from-green-600 to-emerald-500 text-white hover:shadow-xl hover:shadow-green-500/25 hover:-translate-y-0.5'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
                       {attendanceMarked ? <FiCheck className="mr-2 text-lg" /> : null}
-                      {attendanceMarked ? 'Marked' : 'Mark Attendance'}
+                      {attendanceMarked ? 'Marked' : currentTime.getDay() === 0 ? 'Closed on Sunday' : 'Mark Attendance'}
                     </button>
                   </div>
                 </div>

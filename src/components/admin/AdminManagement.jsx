@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff, FiActivity, FiPieChart, FiCalendar, FiClock } from 'react-icons/fi';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 import Popover from '../common/Popover';
@@ -8,8 +8,13 @@ import Popover from '../common/Popover';
 const AdminManagement = () => {
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [activityStats, setActivityStats] = useState(null);
+  const [activityPagination, setActivityPagination] = useState(null);
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -30,6 +35,77 @@ const AdminManagement = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
+
+  // Fetch admin activities
+  const fetchActivities = async (page = 1) => {
+    setLoadingActivities(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/activities?page=${page}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        // Process activities to ensure details are properly formatted
+        const processedActivities = data.data.map(activity => ({
+          ...activity,
+          details: typeof activity.details === 'object' 
+            ? JSON.stringify(activity.details) 
+            : activity.details || 'No details available'
+        }));
+        setActivities(processedActivities);
+        setActivityPagination(data.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      toast.error('Failed to fetch activities');
+      setActivities([]); // Set empty array on error
+      setActivityPagination(null);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  // Fetch activity statistics
+  const fetchActivityStats = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/activities/stats`,
+        {
+          headers: {
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setActivityStats(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching activity stats:', error);
+      toast.error('Failed to fetch activity statistics');
+    }
+  };
+
+  // Fetch activities and stats on component mount and when page changes
+  useEffect(() => {
+    fetchActivities(activityPage);
+    fetchActivityStats();
+  }, [activityPage]);
+
+  // Format date for activities
+  const formatDate = (date) => {
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Handle click on Add Admin button
   const handleAddClick = () => {
@@ -501,8 +577,208 @@ const AdminManagement = () => {
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      {/* Admin Activities Section */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold text-primary-700 mb-6">Admin Activities</h2>
+        
+        {/* Activity Stats */}
+        {activityStats && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-xl shadow">
+                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                  <FiActivity className="mr-2" />
+                  Total Actions
+              </h3>
+              <div className="text-2xl font-bold text-primary-600">
+                {(() => {
+                  if (!activityStats.actionStats) return '0';
+                  return Object.values(activityStats.actionStats)
+                    .reduce((total, curr) => total + (curr.count || 0), 0);
+                })()}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                In the last {activityStats.period || '7 days'}
+              </div>
+            </div>
+            
+            <div className="bg-white p-4 rounded-xl shadow">
+              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                <FiPieChart className="mr-2" />
+                Most Active Admin
+              </h3>
+              <div className="text-lg font-semibold text-primary-600">
+                {(() => {
+                  if (!activityStats.adminStats) return 'N/A';
+                  const mostActiveAdmin = Object.entries(activityStats.adminStats)
+                    .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))[0];
+                  return mostActiveAdmin ? mostActiveAdmin[0] : 'N/A';
+                })()}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                {(() => {
+                  if (!activityStats.adminStats) return '0 actions';
+                  const mostActiveAdmin = Object.entries(activityStats.adminStats)
+                    .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))[0];
+                  return `${mostActiveAdmin ? mostActiveAdmin[1].count : 0} actions`;
+                })()}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl shadow">
+              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                <FiCalendar className="mr-2" />
+                Most Active Day
+              </h3>
+              <div className="text-lg font-semibold text-primary-600">
+                {(() => {
+                  if (!activityStats.dailyStats) return 'N/A';
+                  const mostActiveDay = Object.entries(activityStats.dailyStats)
+                    .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))[0];
+                  return mostActiveDay ? mostActiveDay[0] : 'N/A';
+                })()}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                {(() => {
+                  if (!activityStats.dailyStats) return '0 actions';
+                  const mostActiveDay = Object.entries(activityStats.dailyStats)
+                    .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))[0];
+                  return `${mostActiveDay ? mostActiveDay[1].count : 0} actions`;
+                })()}
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl shadow">
+              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                <FiClock className="mr-2" />
+                Recent Activity
+              </h3>
+              <div className="text-lg font-semibold text-primary-600">
+                {activities[0]?.action || 'No recent activity'}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                {activities[0] ? formatDate(activities[0].timestamp) : 'N/A'}
+              </div>
+            </div>
+          </div>
+
+        {/* Activity List */}
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loadingActivities ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                      Loading activities...
+                    </td>
+                  </tr>
+                ) : activities.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                      No activities found
+                    </td>
+                  </tr>
+                ) : activities.map((activity, index) => (
+                  <tr key={activity._id || index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary-600 to-accent-600 flex items-center justify-center text-white text-sm font-bold">
+                          {activity.adminName?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                        <span className="ml-2 text-sm text-gray-900">{activity.adminName}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full" style={{
+                        backgroundColor: activity.action.toLowerCase().includes('delete') ? '#FEE2E2' :
+                                      activity.action.toLowerCase().includes('create') ? '#DCFCE7' :
+                                      activity.action.toLowerCase().includes('update') ? '#DBEAFE' : '#F3F4F6',
+                        color: activity.action.toLowerCase().includes('delete') ? '#991B1B' :
+                               activity.action.toLowerCase().includes('create') ? '#166534' :
+                               activity.action.toLowerCase().includes('update') ? '#1E40AF' : '#374151'
+                      }}>
+                        {activity.action}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-600 max-w-md">
+                        {typeof activity.details === 'object' 
+                          ? JSON.stringify(activity.details, null, 2)
+                          : activity.details}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(activity.timestamp)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Activity Pagination */}
+          {activityPagination && activityPagination.totalPages > 1 && (
+            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setActivityPage(prev => Math.max(prev - 1, 1))}
+                  disabled={!activityPagination.hasPrevPage}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setActivityPage(prev => prev + 1)}
+                  disabled={!activityPagination.hasNextPage}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing page <span className="font-medium">{activityPagination.currentPage}</span> of{' '}
+                    <span className="font-medium">{activityPagination.totalPages}</span> pages
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setActivityPage(prev => Math.max(prev - 1, 1))}
+                      disabled={!activityPagination.hasPrevPage}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setActivityPage(prev => prev + 1)}
+                      disabled={!activityPagination.hasNextPage}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        </>
+        )}
+      </div>
     </div>
   );
 };
 
-export default AdminManagement; 
+export default AdminManagement;
