@@ -3,13 +3,12 @@ import React, { useState, useEffect } from 'react';
 
 import Popover from '../../common/Popover';
 
-const TutorList = ({ onEdit, onDelete, onProfile }) => {
+const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
   // All state hooks at the top
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active'); // Set 'active' as default
   const [filteredTutors, setFilteredTutors] = useState([]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +23,33 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   useEffect(() => {
     fetchTutors();
   }, []);
+
+  // Re-filter when statusFilter prop changes
+  useEffect(() => {
+    if (!tutors) return;
+    
+    let filtered = [...tutors];
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(tutor => tutor.status === statusFilter);
+    }
+    
+    // Apply search term filter if exists
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(tutor => 
+        (tutor.name && tutor.name.toLowerCase().includes(term)) ||
+        (tutor.email && tutor.email.toLowerCase().includes(term)) ||
+        (tutor.phone && tutor.phone.includes(term)) ||
+        (tutor.assignedCenter && tutor.assignedCenter.name && 
+          tutor.assignedCenter.name.toLowerCase().includes(term))
+      );
+    }
+    
+    setFilteredTutors(filtered);
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   // Filter tutors when search term, status filter, or tutors list changes
   useEffect(() => {
@@ -88,9 +114,12 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
 
       const data = await response.json();
       setTutors(data);
-      // Filter active tutors initially
-      const activeTutors = data.filter(tutor => tutor.status === 'active');
-      setFilteredTutors(activeTutors);
+      // Apply initial filtering based on statusFilter prop
+      let filtered = [...data];
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(tutor => tutor.status === statusFilter);
+      }
+      setFilteredTutors(filtered);
     } catch (err) {
       setError(err.message || 'Failed to fetch tutors');
     } finally {

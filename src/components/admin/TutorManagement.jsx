@@ -5,10 +5,13 @@ import UpdateTutorForm from './tutors/UpdateTutorForm';
 import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
+import useGet from '../CustomHooks/useGet';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
   const [selectedTutor, setSelectedTutor] = useState(null);
+  const { response: tutors } = useGet('/tutors');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
 
   // State for form data, errors, etc.
   const [formData, setFormData] = useState({});
@@ -25,6 +28,11 @@ const TutorManagement = () => {
   const handleAdd = () => {
     setFormData({});
     setMode('add');
+  };
+
+  // Handle filter clicks
+  const handleFilterClick = (filter) => {
+    setStatusFilter(filter);
   };
 
   // Password validation helper
@@ -73,12 +81,12 @@ const TutorManagement = () => {
         }
       });
       
-      console.log('Submitting tutor payload:', JSON.stringify(jsonData, null, 2));  // Log the payload
+      console.log('Sending JSON data to API:', jsonData);
       
       // Password validation
       if ('password' in formData && !isValidPassword(formData.password)) {
         setErrorMessage(
-          'Password must be at least 8 characters, contain no spaces, and not include quotes (" or \').'
+          'Password must be at least 8 characters, contain no spaces, and not include quotes (\" or \\\').'
         );
         setShowErrorPopover(true);
         setIsSubmitting(false);
@@ -96,9 +104,8 @@ const TutorManagement = () => {
         // With axios, successful responses come to this point
         setIsSubmitting(false);
         // Don't immediately reset - let the form show its success message first
-        return response; // Ensure promise resolves
       } catch (apiError) {
-        console.error('Full error response:', apiError.response?.data);  // Detailed backend error
+        // Detailed error handling for API errors
         console.error('API Error:', apiError);
         
         // Get detailed error message from the response if available
@@ -126,7 +133,6 @@ const TutorManagement = () => {
         throw apiError; // Re-throw to be caught by outer catch
       }
     } catch (err) {
-      console.error('Full error response:', err.response?.data);  // Detailed backend error
       console.error('Add Tutor Error:', err);
       if (!showErrorPopover) { // Only set if not already set by inner catch
         // Specific handling for 500 errors
@@ -254,7 +260,7 @@ const TutorManagement = () => {
         }
       });
       
-      console.log('Submitting tutor payload:', JSON.stringify(jsonData, null, 2));  // Log the payload
+      console.log('Sending JSON data to API for update:', jsonData);
       
       // Password validation
       if ('password' in updatedData && updatedData.password && !isValidPassword(updatedData.password)) {
@@ -288,7 +294,6 @@ const TutorManagement = () => {
       // Trigger refresh of tutor list for when we return to it
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
-      console.error('Full error response:', err.response?.data);  // Detailed backend error
       setErrorMessage(err.message || 'Failed to update tutor');
       setShowErrorPopover(true);
     } finally {
@@ -320,6 +325,16 @@ const TutorManagement = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Calculate tutor stats
+  const tutorStats = React.useMemo(() => {
+    if (!tutors) return { total: 0, active: 0, inactive: 0 };
+    return {
+      total: tutors.length,
+      active: tutors.filter(t => t.status === 'active').length,
+      inactive: tutors.filter(t => t.status === 'inactive').length
+    };
+  }, [tutors]);
+
   // Render based on mode
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
@@ -328,15 +343,110 @@ const TutorManagement = () => {
           <div style={{ 
             background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
             borderRadius: '10px', 
-            padding: '24px', 
+            padding: '20px', 
             marginBottom: '24px',
             color: 'white',
             boxShadow: '0 10px 25px rgba(59, 130, 246, 0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
+              <div style={{ flex: '1' }}>
                 <h1 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 6px 0' }}>Tutor Management</h1>
                 <p style={{ fontSize: '14px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '24px', 
+                alignItems: 'center', 
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                margin: '0 24px'
+              }}>
+                <div 
+                  style={{ 
+                    textAlign: 'center', 
+                    paddingRight: '24px', 
+                    borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    opacity: statusFilter === 'all' ? 1 : 0.7,
+                    position: 'relative'
+                  }}
+                  onClick={() => handleFilterClick('all')}
+                  onMouseEnter={(e) => e.target.style.opacity = '1'}
+                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'all' ? 1 : 0.7}
+                >
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0' }}>{tutorStats.total}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Total Tutors</p>
+                  {statusFilter === 'all' && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '20px',
+                      height: '3px',
+                      backgroundColor: 'white',
+                      borderRadius: '2px'
+                    }}></div>
+                  )}
+                </div>
+                <div 
+                  style={{ 
+                    textAlign: 'center', 
+                    paddingRight: '24px', 
+                    borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    opacity: statusFilter === 'active' ? 1 : 0.7,
+                    position: 'relative'
+                  }}
+                  onClick={() => handleFilterClick('active')}
+                  onMouseEnter={(e) => e.target.style.opacity = '1'}
+                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'active' ? 1 : 0.7}
+                >
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#4ade80' }}>{tutorStats.active}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Active Tutors</p>
+                  {statusFilter === 'active' && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '20px',
+                      height: '3px',
+                      backgroundColor: '#4ade80',
+                      borderRadius: '2px'
+                    }}></div>
+                  )}
+                </div>
+                <div 
+                  style={{ 
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    opacity: statusFilter === 'inactive' ? 1 : 0.7,
+                    position: 'relative'
+                  }}
+                  onClick={() => handleFilterClick('inactive')}
+                  onMouseEnter={(e) => e.target.style.opacity = '1'}
+                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'inactive' ? 1 : 0.7}
+                >
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#f87171' }}>{tutorStats.inactive}</h3>
+                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Inactive Tutors</p>
+                  {statusFilter === 'inactive' && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '20px',
+                      height: '3px',
+                      backgroundColor: '#f87171',
+                      borderRadius: '2px'
+                    }}></div>
+                  )}
+                </div>
               </div>
               <button
                 style={{ 
@@ -351,7 +461,8 @@ const TutorManagement = () => {
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
                 }}
                 onClick={handleAdd}
               >
@@ -368,13 +479,13 @@ const TutorManagement = () => {
             background: 'white', 
             borderRadius: '12px', 
             padding: '24px',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
-            marginBottom: '32px'
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)'
           }}>
             <TutorList 
               onEdit={handleEdit} 
               onDelete={handleDeleteTutor} 
               onProfile={handleProfile} 
+              statusFilter={statusFilter}
               key={refreshTrigger} // Force re-render on refresh
             />
           </div>

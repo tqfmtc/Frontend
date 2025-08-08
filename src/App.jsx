@@ -16,6 +16,7 @@ import GuestTutorPage from './pages/GuestTutorPage'
 import AdminGuestPage from './pages/AdminGuestPage'
 import GuestLoginPage from './pages/GuestLoginPage'
 import GuestDashboard from './pages/GuestDashboard'
+import AdminActivityLogsPage from './pages/AdminActivityLogsPage'
 import { CenterRefetchProvider } from './context/CenterRefetchContext';
 import AnnouncementBanner from './components/Announcement/AnnouncementBanner';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
