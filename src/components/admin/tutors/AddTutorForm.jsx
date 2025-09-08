@@ -194,7 +194,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
 
     if (name === 'address') {
       const originalValue = value;
-      newValue = value.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+      newValue = value.replace(/[^a-zA-Z0-9\s,.\-\\/|]/g, '');
       if (newValue !== originalValue) {
         setValidationErrors(prev => ({ ...prev, address: 'Some characters were removed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.' }));
       }
@@ -714,7 +714,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   onChange={(e) => handleChange(e)}
                   onKeyPress={(e) => {
                     const key = e.key;
-                    if (!/^[a-zA-Z0-9\s,.-]$/.test(key)) {
+                    if (!/^[a-zA-Z0-9\s,.\-\\/|]$/.test(key)) {
                       e.preventDefault();
                       setValidationErrors(prev => ({ ...prev, address: `Character '${key}' is not allowed. Only letters, numbers, spaces, commas, periods, and hyphens are allowed.` }));
                     }

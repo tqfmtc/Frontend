@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff, FiActivity, FiPieChart, FiCalendar, FiClock } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff, FiActivity, FiInfo } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 import Popover from '../common/Popover';
 
 const AdminManagement = () => {
+  const [activeTab, setActiveTab] = useState('admins'); // 'admins' or 'activities'
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activityPage, setActivityPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activities, setActivities] = useState([]);
-  const [activityStats, setActivityStats] = useState(null);
-  const [activityPagination, setActivityPagination] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,6 +21,11 @@ const AdminManagement = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Activity logs states
+  const [activities, setActivities] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitiesError, setActivitiesError] = useState(null);
   
   // Popover states
   const [showErrorPopover, setShowErrorPopover] = useState(false);
@@ -35,72 +38,70 @@ const AdminManagement = () => {
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
 
-  // Fetch admin activities
-  const fetchActivities = async (page = 1) => {
+  // Fetch activities function
+  const fetchActivities = async () => {
+    setActivitiesLoading(true);
+    setActivitiesError(null);
     try {
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (!userData || !userData.token) {
+        throw new Error('Authentication required');
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/activities?page=${page}`,
+        `${import.meta.env.VITE_API_URL}/admin/activities`,
         {
           headers: {
-            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
+            'Authorization': `Bearer ${userData.token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status}`);
+      }
+      
       const data = await response.json();
-      if (data.success) {
-        // Process activities to ensure details are properly formatted
-        const processedActivities = data.data.map(activity => ({
-          ...activity,
-          details: typeof activity.details === 'object' 
-            ? JSON.stringify(activity.details) 
-            : activity.details || 'No details available'
-        }));
-        setActivities(processedActivities);
-        setActivityPagination(data.pagination);
+      // The backend returns the activities array directly
+      if (Array.isArray(data)) {
+        setActivities(data);
+      } else {
+        setActivities([]);
       }
     } catch (error) {
       console.error('Error fetching activities:', error);
-      toast.error('Failed to fetch activities');
-      setActivities([]); // Set empty array on error
-      setActivityPagination(null);
+      setActivitiesError(error.message || 'Failed to fetch activities');
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
     }
   };
 
-  // Fetch activity statistics
-  const fetchActivityStats = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/activities/stats`,
-        {
-          headers: {
-            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
-          }
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setActivityStats(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching activity stats:', error);
-      toast.error('Failed to fetch activity statistics');
-    }
-  };
-
-  // Fetch activities and stats on component mount and when page changes
+  // Fetch activities when tab is switched to activities
   useEffect(() => {
-    fetchActivities(activityPage);
-    fetchActivityStats();
-  }, [activityPage]);
+    if (activeTab === 'activities') {
+      fetchActivities();
+    }
+  }, [activeTab]);
 
-  // Format date for activities
-  const formatDate = (date) => {
-    return new Date(date).toLocaleString('en-US', {
+  // Helper functions for activity logs
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getTargetNameAndPhone = (activity) => {
+    if (!activity.targetInfo) return { name: 'N/A', phone: 'N/A' };
+    
+    return {
+      name: activity.targetInfo.name || 'N/A',
+      phone: activity.targetInfo.phone || 'N/A'
+    };
   };
 
   // Handle click on Add Admin button
@@ -293,108 +294,248 @@ const AdminManagement = () => {
     <div className="p-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary-700">Admin Management</h1>
-        <div className="flex gap-2">
+        {activeTab === 'admins' && (
           <button
             onClick={handleAddClick}
             className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
             <FiPlus className="mr-2" /> Add New Admin
           </button>
+        )}
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('admins')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'admins'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FiUser className="inline mr-2" />
+              Admins
+            </button>
+            <button
+              onClick={() => setActiveTab('activities')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'activities'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FiActivity className="inline mr-2" />
+              Activity Logs
+            </button>
+          </nav>
         </div>
       </div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-        <div className="relative w-full md:w-1/2">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search admins by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-      </div>
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin Name</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
-              <tr><td colSpan={4} className="text-center py-8">Loading...</td></tr>
-            ) : fetchError ? (
-              <tr><td colSpan={4} className="text-center text-red-500 py-8">Error loading admins: {fetchError}</td></tr>
-            ) : paginatedAdmins.length === 0 ? (
-              <tr><td colSpan={4} className="text-center py-8 text-gray-500">No admins found.</td></tr>
-            ) : paginatedAdmins.map((admin) => (
-              <tr key={admin._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
-                      {admin.name?.charAt(0)?.toUpperCase() || <FiUser />}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{admin.name}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center text-sm text-gray-700">
-                    <FiMail className="mr-2 text-primary-600" />
-                    {admin.email}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center text-sm text-gray-700">
-                    <FiPhone className="mr-2 text-primary-600" />
-                    {admin.phone || 'Not provided'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button
-                    onClick={() => handleEditClick(admin)}
-                    className="text-blue-600 hover:text-blue-900"
-                    title="Edit"
-                  >
-                    <FiEdit2 className="inline-block" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(admin)}
-                    className="text-red-600 hover:text-red-900"
-                    title="Delete"
-                  >
-                    <FiTrash2 className="inline-block" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {totalPages > 1 && (
-        <div className="mt-4 flex justify-center gap-2">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border rounded-lg disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 border rounded-lg disabled:opacity-50"
-          >
-            Next
-          </button>
+      {/* Admins Tab Content */}
+      {activeTab === 'admins' && (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+            <div className="relative w-full md:w-1/2">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search admins by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr><td colSpan={4} className="text-center py-8">Loading...</td></tr>
+                ) : fetchError ? (
+                  <tr><td colSpan={4} className="text-center text-red-500 py-8">Error loading admins: {fetchError}</td></tr>
+                ) : paginatedAdmins.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-8 text-gray-500">No admins found.</td></tr>
+                ) : paginatedAdmins.map((admin) => (
+                  <tr key={admin._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+                          {admin.name?.charAt(0)?.toUpperCase() || <FiUser />}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{admin.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-700">
+                        <FiMail className="mr-2 text-primary-600" />
+                        {admin.email}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-700">
+                        <FiPhone className="mr-2 text-primary-600" />
+                        {admin.phone || 'Not provided'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEditClick(admin)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Edit"
+                      >
+                        <FiEdit2 className="inline-block" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(admin)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <FiTrash2 className="inline-block" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded-lg disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded-lg disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Activity Logs Tab Content */}
+      {activeTab === 'activities' && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {activitiesLoading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                      <div>
+                        <p>Loading activities...</p>
+                        <button 
+                          onClick={fetchActivities}
+                          className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : activitiesError ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-red-500">
+                      <div>
+                        <p className="font-medium">Error loading activities</p>
+                        <p className="text-sm">{activitiesError}</p>
+                        <button 
+                          onClick={fetchActivities}
+                          className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : activities.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                      No activities found
+                    </td>
+                  </tr>
+                ) : activities.map((activity) => {
+                  const target = getTargetNameAndPhone(activity);
+                  return (
+                    <tr key={activity._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary-600 to-accent-600 flex items-center justify-center text-white text-sm font-bold">
+                            {activity.admin?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <span className="ml-2 text-sm text-gray-900">
+                            {activity.admin?.name || 'Unknown'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full" style={{
+                          backgroundColor: activity.action.toLowerCase().includes('delete') ? '#FEE2E2' :
+                                        activity.action.toLowerCase().includes('create') ? '#DCFCE7' :
+                                        activity.action.toLowerCase().includes('update') ? '#DBEAFE' : '#F3F4F6',
+                          color: activity.action.toLowerCase().includes('delete') ? '#991B1B' :
+                                 activity.action.toLowerCase().includes('create') ? '#166534' :
+                                 activity.action.toLowerCase().includes('update') ? '#1E40AF' : '#374151'
+                        }}>
+                          {activity.actionName || activity.action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{target.name}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">{target.phone}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(activity.timestamp)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {activity.description && (
+                          <div className="group relative">
+                            <FiInfo className="cursor-help text-gray-400 hover:text-gray-600" />
+                            <div className="invisible group-hover:visible absolute left-0 bottom-full mb-2 w-64 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-10">
+                              {activity.description}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {/* Admin Form Popover */}
@@ -574,173 +715,9 @@ const AdminManagement = () => {
         cancelText="Cancel"
       />
 
-      {/* Admin Activities Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-primary-700 mb-6">Admin Activities</h2>
-        
-        {/* Activity Stats */}
-        {activityStats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-xl shadow">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                <FiActivity className="mr-2" />
-                Total Actions
-              </h3>
-              <div className="text-2xl font-bold text-primary-600">
-                {Object.values(activityStats.actionStats).reduce((a, b) => a + b, 0)}
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                In the last {activityStats.period}
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-xl shadow">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                <FiPieChart className="mr-2" />
-                Most Active Admin
-              </h3>
-              <div className="text-lg font-semibold text-primary-600">
-                {Object.entries(activityStats.adminStats)
-                  .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'}
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                {Object.entries(activityStats.adminStats)
-                  .sort((a, b) => b[1] - a[1])[0]?.[1] || 0} actions
-              </div>
-            </div>
 
-            <div className="bg-white p-4 rounded-xl shadow">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                <FiCalendar className="mr-2" />
-                Most Active Day
-              </h3>
-              <div className="text-lg font-semibold text-primary-600">
-                {Object.entries(activityStats.dailyStats)
-                  .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'}
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                {Object.entries(activityStats.dailyStats)
-                  .sort((a, b) => b[1] - a[1])[0]?.[1] || 0} actions
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl shadow">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                <FiClock className="mr-2" />
-                Recent Activity
-              </h3>
-              <div className="text-lg font-semibold text-primary-600">
-                {activities[0]?.action || 'No recent activity'}
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                {activities[0] ? formatDate(activities[0].timestamp) : 'N/A'}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Activity List */}
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {activities.map((activity, index) => (
-                  <tr key={activity._id || index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary-600 to-accent-600 flex items-center justify-center text-white text-sm font-bold">
-                          {activity.adminName?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                        <span className="ml-2 text-sm text-gray-900">{activity.adminName}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full" style={{
-                        backgroundColor: activity.action.toLowerCase().includes('delete') ? '#FEE2E2' :
-                                      activity.action.toLowerCase().includes('create') ? '#DCFCE7' :
-                                      activity.action.toLowerCase().includes('update') ? '#DBEAFE' : '#F3F4F6',
-                        color: activity.action.toLowerCase().includes('delete') ? '#991B1B' :
-                               activity.action.toLowerCase().includes('create') ? '#166534' :
-                               activity.action.toLowerCase().includes('update') ? '#1E40AF' : '#374151'
-                      }}>
-                        {activity.action}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600 max-w-md">
-                        {typeof activity.details === 'object' 
-                          ? JSON.stringify(activity.details, null, 2)
-                          : activity.details}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(activity.timestamp)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Activity Pagination */}
-          {activityPagination && activityPagination.totalPages > 1 && (
-            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={() => setActivityPage(prev => Math.max(prev - 1, 1))}
-                  disabled={!activityPagination.hasPrevPage}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setActivityPage(prev => prev + 1)}
-                  disabled={!activityPagination.hasNextPage}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing page <span className="font-medium">{activityPagination.currentPage}</span> of{' '}
-                    <span className="font-medium">{activityPagination.totalPages}</span> pages
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => setActivityPage(prev => Math.max(prev - 1, 1))}
-                      disabled={!activityPagination.hasPrevPage}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setActivityPage(prev => prev + 1)}
-                      disabled={!activityPagination.hasNextPage}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
 
-export default AdminManagement; 
+export default AdminManagement;

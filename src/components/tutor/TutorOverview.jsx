@@ -246,12 +246,35 @@ const TutorOverview = () => {
   const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
   const { response: students, loading } = useGet('/students')
 
-  const centerLocation = tutorData.assignedCenter?.coordinates
-    ? {
-        lat: parseFloat(tutorData.assignedCenter.coordinates),
-        lng: parseFloat(tutorData.assignedCenter.coordinates[13]),
+  // Resolve center coordinates robustly: supports [lat,lng], "lat, lng", or {lat,lng}
+  const centerLocation = (() => {
+    const coords = tutorData?.assignedCenter?.coordinates
+    if (!coords) return null
+
+    let lat = null
+    let lng = null
+
+    if (Array.isArray(coords) && coords.length >= 2) {
+      lat = Number(coords[0])
+      lng = Number(coords[1])
+    } else if (typeof coords === 'string') {
+      const parts = coords.split(/[, ]+/).filter(Boolean)
+      if (parts.length >= 2) {
+        lat = Number(parts[0])
+        lng = Number(parts[1])
       }
-    : null
+    } else if (typeof coords === 'object' && coords !== null) {
+      if (typeof coords.lat !== 'undefined' && typeof coords.lng !== 'undefined') {
+        lat = Number(coords.lat)
+        lng = Number(coords.lng)
+      }
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng }
+    }
+    return null
+  })()
 
   const centerStudents = students ? students.filter(s => {
     const studentCenterId = s.assignedCenter && (typeof s.assignedCenter === 'string' ? s.assignedCenter : s.assignedCenter._id)
@@ -363,7 +386,7 @@ const TutorOverview = () => {
   if (!centerLocation) {
     return (
       <div className="text-center text-red-600 p-4">
-        Unable to load center location. Please log in again.
+        Unable to load center location. Please ensure your assigned center has valid coordinates.
       </div>
     )
   }
@@ -540,7 +563,11 @@ const TutorOverview = () => {
 
                 <div className="relative h-[300px] sm:h-[350px] md:h-[400px] rounded-2xl overflow-hidden mb-6 shadow-2xl border border-white/20 bg-white/5 backdrop-blur-sm">
                   <MapContainer
-                    center={[centerLocation.lat, centerLocation.lng]}
+                    center={
+                      centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng)
+                        ? [centerLocation.lat, centerLocation.lng]
+                        : [17.385, 78.4867]
+                    }
                     zoom={15}
                     style={{ height: '100%', width: '100%' }}
                     attributionControl={false}
@@ -556,13 +583,17 @@ const TutorOverview = () => {
                       fallbackQuery={tutorData?.assignedCenter?.name || tutorData?.assignedCenter?.city || ''}
                     />
 
-                    <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
+                    {centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng) && (
+                      <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
+                    )}
 
-                    <Circle
-                      center={[centerLocation.lat, centerLocation.lng]}
-                      radius={100}
-                      pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
-                    />
+                    {centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng) && (
+                      <Circle
+                        center={[centerLocation.lat, centerLocation.lng]}
+                        radius={100}
+                        pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
+                      />
+                    )}
                   </MapContainer>
                 </div>
 
