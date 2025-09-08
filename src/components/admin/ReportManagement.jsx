@@ -74,6 +74,8 @@ const ReportManagement = () => {
     // Create CSV headers with a column for each day
     const headers = {
       'Tutor Name': 'Tutor Name',
+      'Attendance %': 'Attendance %',
+      'Phone': 'Phone',
       'Center': 'Center'
     };
     
@@ -83,11 +85,11 @@ const ReportManagement = () => {
       headers[`Day ${displayDate}`] = `Day ${displayDate}`;
     });
     
-    // Add summary columns
+    // Add summary columns at the end
     headers['Total Days'] = 'Total Days';
     headers['Present Days'] = 'Present Days';
     headers['Absent Days'] = 'Absent Days';
-    headers['Attendance %'] = 'Attendance %';
+    headers['Final Attendance %'] = 'Final Attendance %';
     
     // Create rows for each tutor
     const rows = attendanceReport.map(report => {
@@ -95,13 +97,18 @@ const ReportManagement = () => {
       const date = new Date(selectedYear, selectedMonth - 1, 1);
       const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
       const daysInMonth = lastDay; // Total days in month
+      const now = new Date();
+      const isCurrentMonth = (selectedYear === now.getFullYear()) && (selectedMonth === now.getMonth() + 1);
+      const daysToConsider = isCurrentMonth ? now.getDate() : daysInMonth; // Use current date for current month
       
       const presentDays = Object.values(report.attendance).filter(Boolean).length;
-      const absentDays = daysInMonth - presentDays;
-      const attendancePercentage = daysInMonth > 0 ? Math.round((presentDays / daysInMonth) * 100) : 0;
+      const absentDays = daysToConsider - presentDays;
+      const attendancePercentage = daysToConsider > 0 ? Math.round((presentDays / daysToConsider) * 100) : 0;
       
       const row = {
         'Tutor Name': report.tutor.name,
+        'Attendance %': `${attendancePercentage}%`,
+        'Phone': report.tutor.phone || 'N/A',
         'Center': report.center.name
       };
       
@@ -111,11 +118,11 @@ const ReportManagement = () => {
         row[`Day ${day.split('-')[2]}`] = status ? 'Present' : 'Absent';
       });
       
-      // Add summary data
-      row['Total Days'] = daysInMonth;
+      // Add summary data at the end
+      row['Total Days'] = daysToConsider;
       row['Present Days'] = presentDays;
       row['Absent Days'] = absentDays;
-      row['Attendance %'] = `${attendancePercentage}%`;
+      row['Final Attendance %'] = `${attendancePercentage}%`;
       
       return row;
     });
@@ -288,6 +295,9 @@ const ReportManagement = () => {
                     Tutor
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Center
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -308,13 +318,13 @@ const ReportManagement = () => {
                   // Determine if this is the current month and year
                   const now = new Date();
                   const isCurrentMonth = (selectedYear === now.getFullYear()) && (selectedMonth === now.getMonth() + 1);
-                  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+                  const daysToConsider = isCurrentMonth ? now.getDate() : daysInMonth;
                   // Calculate absent days: only count days that have passed
-                  const absentDays = daysElapsed - presentDays;
+                  const absentDays = daysToConsider - presentDays;
 
-                  // Calculate percentages
-                  const presentPercentage = (presentDays / daysInMonth) * 100;
-                  const absentPercentage = (absentDays / daysInMonth) * 100;
+                  // Calculate percentages based on days that have passed
+                  const presentPercentage = (presentDays / daysToConsider) * 100;
+                  const absentPercentage = (absentDays / daysToConsider) * 100;
 
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50">
@@ -322,6 +332,9 @@ const ReportManagement = () => {
                         <div className="text-sm font-medium text-gray-900">
                           {report.tutor.name}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{report.tutor.phone || 'N/A'}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{report.center.name}</div>
