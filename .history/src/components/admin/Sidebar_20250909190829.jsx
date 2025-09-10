@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiUserCheck, FiDollarSign } from 'react-icons/fi'
+import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiUserCheck, FiDollarSign, FiActivity } from 'react-icons/fi'
 import { BiRupee } from 'react-icons/bi' // Importing rupee sign icon
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -50,7 +50,6 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
     { id: 'announcements', label: 'Announcements', icon: FiFileText },
     { id: 'centers', label: 'Centers', icon: FiMapPin },
     { id: 'reports', label: 'Reports', icon: FiFileText },
-    { id: 'activity-logs', label: 'Activity Logs', icon: FiActivity },
     { id: 'students', label: 'Students', icon: FiUser },
     { id: 'admins', label: 'Admins', icon: FiUserPlus },
     { id: 'supervisors', label: 'Supervisors', icon: FiUserCheck }

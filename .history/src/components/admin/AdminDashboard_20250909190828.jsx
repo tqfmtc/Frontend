@@ -11,7 +11,7 @@ import SupervisorManagement from './SupervisorManagement';
 import HadiyaManagement from './HadiyaManagement';
 import AdminGuestPage from '../../pages/AdminGuestPage';
 import AnnouncementManagement from './AnnouncementManagement';
-import AdminActivityLogsPage from '../../pages/AdminActivityLogsPage';
+
 import { FiMenu, FiX } from 'react-icons/fi'; // Icons for mobile menu toggle
 
 const AdminDashboard = () => {
@@ -24,10 +24,20 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Check if there's a tab param in location state and set active tab accordingly
+    console.log('Location state:', location.state);
     if (location.state && location.state.activeTab) {
+      console.log('Setting active tab to:', location.state.activeTab);
       setActiveTab(location.state.activeTab);
       // Clear the state after using it to prevent it from persisting on refresh
       window.history.replaceState({}, document.title);
+    } else {
+      // Check sessionStorage for activeTab (for window.location navigation)
+      const storedTab = sessionStorage.getItem('activeTab');
+      if (storedTab) {
+        console.log('Setting active tab from sessionStorage:', storedTab);
+        setActiveTab(storedTab);
+        sessionStorage.removeItem('activeTab'); // Clear after using
+      }
     }
     
     const loadUserData = () => {
@@ -79,8 +89,6 @@ const AdminDashboard = () => {
         return <AdminGuestPage />;
       case 'announcements':
         return <AnnouncementManagement />;
-      case 'activity-logs':
-        return <AdminActivityLogsPage />;
       default:
         return (
           <div className="p-6">
