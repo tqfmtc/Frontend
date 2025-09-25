@@ -189,6 +189,8 @@ const ReportManagement = () => {
       'Tutor Name': 'Tutor Name',
       'Attendance %': 'Attendance %',
       'Phone': 'Phone',
+      'Attendance %': 'Attendance %',
+      'Phone': 'Phone',
       'Center': 'Center'
     };
     
@@ -199,9 +201,11 @@ const ReportManagement = () => {
     });
     
     // Add summary columns at the end
+    // Add summary columns at the end
     headers['Total Days'] = 'Total Days';
     headers['Present Days'] = 'Present Days';
     headers['Absent Days'] = 'Absent Days';
+    headers['Final Attendance %'] = 'Final Attendance %';
     headers['Final Attendance %'] = 'Final Attendance %';
     
     // Create rows for each tutor
@@ -229,6 +233,8 @@ const ReportManagement = () => {
         'Tutor Name': report.tutor.name,
         'Attendance %': `${attendancePercentage}%`,
         'Phone': report.tutor.phone || 'N/A',
+        'Attendance %': `${attendancePercentage}%`,
+        'Phone': report.tutor.phone || 'N/A',
         'Center': report.center.name
       };
       
@@ -240,8 +246,11 @@ const ReportManagement = () => {
       
       // Add summary data at the end
       row['Total Days'] = daysToConsider;
+      // Add summary data at the end
+      row['Total Days'] = daysToConsider;
       row['Present Days'] = presentDays;
       row['Absent Days'] = absentDays;
+      row['Final Attendance %'] = `${attendancePercentage}%`;
       row['Final Attendance %'] = `${attendancePercentage}%`;
       
       return row;
@@ -436,6 +445,9 @@ const ReportManagement = () => {
                     Phone
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Center
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -476,6 +488,9 @@ const ReportManagement = () => {
                         <div className="text-sm font-medium text-gray-900">
                           {report.tutor.name}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{report.tutor.phone || 'N/A'}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{report.tutor.phone || 'N/A'}</div>
