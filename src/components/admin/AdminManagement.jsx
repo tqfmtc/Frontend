@@ -152,19 +152,25 @@ const AdminManagement = () => {
       let requestBody = {};
       
       if (editingAdmin) {
-        // For updates, only include fields that have changed
+        // For updates, compute changed fields and include updatedFields
+        const updatedFields = [];
         if (formData.name !== editingAdmin.name) {
           requestBody.name = formData.name;
+          updatedFields.push('name');
         }
         if (formData.email !== editingAdmin.email) {
           requestBody.email = formData.email;
+          updatedFields.push('email');
         }
         if (formData.phone !== editingAdmin.phone) {
           requestBody.phone = formData.phone;
+          updatedFields.push('phone');
         }
         if (formData.password) {
           requestBody.password = formData.password;
+          updatedFields.push('password');
         }
+        requestBody.updatedFields = updatedFields;
       } else {
         // For new admin, include all required fields
         requestBody = {
@@ -521,14 +527,29 @@ const AdminManagement = () => {
                         {formatDate(activity.timestamp)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {activity.description && (
-                          <div className="group relative">
-                            <FiInfo className="cursor-help text-gray-400 hover:text-gray-600" />
-                            <div className="invisible group-hover:visible absolute left-0 bottom-full mb-2 w-64 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-10">
-                              {activity.description}
-                            </div>
-                          </div>
-                        )}
+                        {(() => {
+                          const isUpdate = typeof activity.action === 'string' && activity.action.toLowerCase().includes('update');
+                          const uf = Array.isArray(activity?.details?.updatedFields)
+                            ? activity.details.updatedFields
+                            : (Array.isArray(activity?.updatedFields) ? activity.updatedFields : []);
+                          if (isUpdate && uf.length > 0) {
+                            return (
+                              <span>
+                                Updated fields: {uf.join(', ')}
+                              </span>
+                            );
+                          }
+                          return (
+                            activity.description && (
+                              <div className="group relative">
+                                <FiInfo className="cursor-help text-gray-400 hover:text-gray-600" />
+                                <div className="invisible group-hover:visible absolute left-0 bottom-full mb-2 w-64 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-10">
+                                  {activity.description}
+                                </div>
+                              </div>
+                            )
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

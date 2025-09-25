@@ -163,6 +163,21 @@ const CenterManagement = () => {
         url = `${import.meta.env.VITE_API_URL}/centers`;
       }
 
+      // If editing, compute updatedFields for logger
+      if (editingCenter) {
+        const changed = [];
+        try {
+          if (formData.name !== editingCenter.name) changed.push('name');
+          if (formData.area !== editingCenter.area) changed.push('area');
+          if (formData.sadarName !== editingCenter.sadarName) changed.push('sadarName');
+          if (formData.sadarContact !== editingCenter.sadarContact) changed.push('sadarContact');
+          const coordsStr = editingCenter.coordinates?.join(', ');
+          if (formData.coordinates !== coordsStr) changed.push('coordinates');
+          if (formData.location !== editingCenter.location) changed.push('location');
+        } catch {}
+        formDataToSend.append('updatedFields', JSON.stringify(changed));
+      }
+
       const response = await fetch(url, {
         method: editingCenter ? 'PUT' : 'POST',
         headers: {

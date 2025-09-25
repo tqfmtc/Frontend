@@ -217,6 +217,26 @@ const TutorManagement = () => {
       
       // Prepare FormData for file uploads
       const fd = new FormData();
+
+      // Compute updatedFields for logger by comparing with current selectedTutor
+      const updatedFields = [];
+      try {
+        const comparableFields = [
+          'name','email','phone','address','qualificationType','qualificationOther','qualificationStatus','yearOfCompletion','madarsahName','collegeName','specialization','assignedCenter','subjects','sessionType','sessionTiming','assignedHadiyaAmount','aadharNumber','bankName','bankBranch','accountNumber','ifscCode','status'
+        ];
+        comparableFields.forEach((key) => {
+          const newVal = updatedData[key];
+          const oldVal = selectedTutor[key];
+          if (typeof newVal === 'undefined') return;
+          if (Array.isArray(newVal)) {
+            const oldArr = Array.isArray(oldVal) ? oldVal : (typeof oldVal === 'undefined' ? [] : [oldVal]);
+            if (JSON.stringify(newVal) !== JSON.stringify(oldArr)) updatedFields.push(key);
+          } else if (newVal !== oldVal) {
+            updatedFields.push(key);
+          }
+        });
+        if (updatedData.password) updatedFields.push('password');
+      } catch {}
       Object.entries(updatedData).forEach(([key, value]) => {
         if (key === 'documents' && typeof value === 'object' && value !== null) {
           // Nested documents
@@ -259,6 +279,8 @@ const TutorManagement = () => {
           jsonData[key] = value;
         }
       });
+      // Include updatedFields array for backend logger
+      jsonData.updatedFields = updatedFields;
       
       console.log('Sending JSON data to API for update:', jsonData);
       
