@@ -1,15 +1,17 @@
-// PWA Registration and Utilities
-export const registerSW = async () => {
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      return registration;
-    } catch (error) {
-      console.error('Service worker registration failed:', error);
-      return null;
+// utils/pwa.js
+import { registerSW as _registerSW } from 'virtual:pwa-register';
+
+// Register service worker with auto-update
+export const registerSW = () => {
+  const updateSW = _registerSW({
+    onNeedRefresh() {
+      // Automatically reload when a new version is available
+      updateSW(true);
+    },
+    onOfflineReady() {
+      console.log('App ready to work offline');
     }
-  }
-  return null;
+  });
 };
 
 // Check if app is running in standalone mode (installed)
@@ -65,4 +67,4 @@ export const clearCache = async () => {
       cacheNames.map(cacheName => caches.delete(cacheName))
     );
   }
-}; 
+};

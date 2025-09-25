@@ -189,8 +189,6 @@ const ReportManagement = () => {
       'Tutor Name': 'Tutor Name',
       'Attendance %': 'Attendance %',
       'Phone': 'Phone',
-      'Attendance %': 'Attendance %',
-      'Phone': 'Phone',
       'Center': 'Center'
     };
     
@@ -201,11 +199,9 @@ const ReportManagement = () => {
     });
     
     // Add summary columns at the end
-    // Add summary columns at the end
     headers['Total Days'] = 'Total Days';
     headers['Present Days'] = 'Present Days';
     headers['Absent Days'] = 'Absent Days';
-    headers['Final Attendance %'] = 'Final Attendance %';
     headers['Final Attendance %'] = 'Final Attendance %';
     
     // Create rows for each tutor
@@ -214,25 +210,13 @@ const ReportManagement = () => {
       const date = new Date(selectedYear, selectedMonth - 1, 1);
       const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
       const daysInMonth = lastDay; // Total days in month
-      const now = new Date();
-      const isCurrentMonth = (selectedYear === now.getFullYear()) && (selectedMonth === now.getMonth() + 1);
-      const daysToConsider = isCurrentMonth ? now.getDate() : daysInMonth; // Use current date for current month
       
-      // Count total present days excluding Sundays
-      const presentDays = Object.entries(report.attendance)
-        .filter(([date, present]) => present && !isSunday(new Date(date)))
-        .length;
-      
-      // Count workdays (excluding Sundays) up to current date or month end
-      const workdaysToConsider = countNonSundaysUpTo(selectedYear, selectedMonth, daysToConsider);
-      
-      const absentDays = workdaysToConsider - presentDays;
-      const attendancePercentage = workdaysToConsider > 0 ? Math.round((presentDays / workdaysToConsider) * 100) : 0;
+      const presentDays = Object.values(report.attendance).filter(Boolean).length;
+      const absentDays = daysInMonth - presentDays;
+      const attendancePercentage = daysInMonth > 0 ? Math.round((presentDays / daysInMonth) * 100) : 0;
       
       const row = {
         'Tutor Name': report.tutor.name,
-        'Attendance %': `${attendancePercentage}%`,
-        'Phone': report.tutor.phone || 'N/A',
         'Attendance %': `${attendancePercentage}%`,
         'Phone': report.tutor.phone || 'N/A',
         'Center': report.center.name
@@ -246,11 +230,8 @@ const ReportManagement = () => {
       
       // Add summary data at the end
       row['Total Days'] = daysToConsider;
-      // Add summary data at the end
-      row['Total Days'] = daysToConsider;
       row['Present Days'] = presentDays;
       row['Absent Days'] = absentDays;
-      row['Final Attendance %'] = `${attendancePercentage}%`;
       row['Final Attendance %'] = `${attendancePercentage}%`;
       
       return row;
@@ -445,9 +426,6 @@ const ReportManagement = () => {
                     Phone
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Center
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -470,17 +448,13 @@ const ReportManagement = () => {
                   // Determine if this is the current month and year
                   const now = new Date();
                   const isCurrentMonth = (selectedYear === now.getFullYear()) && (selectedMonth === now.getMonth() + 1);
-                  const daysToConsider = isCurrentMonth ? now.getDate() : daysInMonth;
-                  
-                  // Count workdays (excluding Sundays) up to current date or month end
-                  const workdaysToConsider = countNonSundaysUpTo(selectedYear, selectedMonth, daysToConsider);
-                  
-                  // Calculate absent days: only count non-Sunday days that have passed
-                  const absentDays = workdaysToConsider - presentDays;
+                  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+                  // Calculate absent days: only count days that have passed
+                  const absentDays = daysElapsed - presentDays;
 
-                  // Calculate percentages based on workdays that have passed
-                  const presentPercentage = (presentDays / workdaysToConsider) * 100;
-                  const absentPercentage = (absentDays / workdaysToConsider) * 100;
+                  // Calculate percentages
+                  const presentPercentage = (presentDays / daysInMonth) * 100;
+                  const absentPercentage = (absentDays / daysInMonth) * 100;
 
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openMapForTutor(report)}>
@@ -488,9 +462,6 @@ const ReportManagement = () => {
                         <div className="text-sm font-medium text-gray-900">
                           {report.tutor.name}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{report.tutor.phone || 'N/A'}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{report.tutor.phone || 'N/A'}</div>
