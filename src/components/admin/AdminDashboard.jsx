@@ -11,6 +11,7 @@ import SupervisorManagement from './SupervisorManagement';
 import HadiyaManagement from './HadiyaManagement';
 import AdminGuestPage from '../../pages/AdminGuestPage';
 import AnnouncementManagement from './AnnouncementManagement';
+import AttendanceController from './AttendanceController'; // Import the AttendanceController
 
 import { FiMenu, FiX } from 'react-icons/fi'; // Icons for mobile menu toggle
 
@@ -57,7 +58,7 @@ const AdminDashboard = () => {
         setUser(parsedData);
       } catch (error) {
         console.error('Error parsing user data:', error);
-        localStorage.removeItem('userData');
+        localStorage.removeTime('userData');
         navigate('/admin');
       } finally {
         setIsLoading(false);
@@ -89,6 +90,8 @@ const AdminDashboard = () => {
         return <AdminGuestPage />;
       case 'announcements':
         return <AnnouncementManagement />;
+      case 'attendance-control': // New case for AttendanceController
+        return <AttendanceController />;
       default:
         return (
           <div className="p-6">
