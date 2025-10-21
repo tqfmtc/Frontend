@@ -12,6 +12,7 @@ import HadiyaManagement from './HadiyaManagement';
 import AdminGuestPage from '../../pages/AdminGuestPage';
 import AnnouncementManagement from './AnnouncementManagement';
 import AttendanceController from './AttendanceController'; // Import the AttendanceController
+import SubjectManagement from './SubjectManagement';
 
 import { FiMenu, FiX } from 'react-icons/fi'; // Icons for mobile menu toggle
 
@@ -92,6 +93,8 @@ const AdminDashboard = () => {
         return <AnnouncementManagement />;
       case 'attendance-control': // New case for AttendanceController
         return <AttendanceController />;
+        case 'subject-management': // New case for SubjectManagement
+        return <SubjectManagement />;
       default:
         return (
           <div className="p-6">
