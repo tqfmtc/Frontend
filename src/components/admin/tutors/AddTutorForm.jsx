@@ -26,6 +26,8 @@ const initialState = {
   bankBranch: '',
   ifscCode: '',
   aadharNumber: '',
+  // NEW
+  students: []
 };
 
 const sessionTypes = [
@@ -78,6 +80,13 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   const [centerQuery, setCenterQuery] = useState('');
   const [showCenterDropdown, setShowCenterDropdown] = useState(false);
   const [centersError, setCentersError] = useState(null);
+  
+  // NEW: students by center state
+  const [studentsByCenter, setStudentsByCenter] = useState([]);
+  const [studentsError, setStudentsError] = useState(null);
+  const [studentFilter, setStudentFilter] = useState('');
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
   const [showSuccessPopover, setShowSuccessPopover] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showErrorPopover, setShowErrorPopover] = useState(false);
@@ -429,6 +438,50 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
     // Default handling for other fields
     setLocalForm(prev => ({ ...prev, [name]: value }));
   };
+
+    // NEW: when center changes, fetch students for that center
+  const fetchStudentsForCenter = async (centerId) => {
+    setStudentsError(null);
+    setLoadingStudents(true);
+    setStudentsByCenter([]);
+    try {
+      const userStr = localStorage.getItem('userData');
+      let token = null;
+      if (userStr) {
+        try {
+          token = JSON.parse(userStr)?.token;
+        } catch {
+          token = null;
+        }
+      }
+      if (!token) {
+        setStudentsError('Login required to load students.');
+        setLoadingStudents(false);
+        return;
+      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/students/getByCenter/${centerId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        setStudentsError(res.status === 404 ? 'No students found for this center.' : 'Failed to fetch students for center.');
+        setLoadingStudents(false);
+        return;
+      }
+      const data = await res.json();
+      setStudentsByCenter(Array.isArray(data) ? data : []);
+    } catch {
+      setStudentsError('Error fetching students for this center.');
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // When assignedCenter changes via select/autocomplete, call fetchStudentsForCenter
+  const handleCenterPick = (centerId) => {
+    setLocalForm((prev) => ({ ...prev, assignedCenter: centerId, students: [] })); // clear existing picks on center change
+    if (centerId) fetchStudentsForCenter(centerId);
+  };
+
 
   // Nested change handling has been simplified as documents are no longer part of the form
   // Bank details handling has been removed since it's no longer part of the form
@@ -794,49 +847,148 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
 
             </div>
             
-            {/* Assigned Center - Full Width */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Assigned Center <span className="text-red-600">*</span>
-              </label>
-                {centersError ? (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm mb-2">
-                    <span className="block">{centersError}</span>
-                    <button type="button" onClick={handleRetryCenters} className="mt-1 px-2 py-1 bg-red-500 hover:bg-red-700 text-white text-xs rounded">Retry</button>
-                  </div>
-                ) : null}
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={centerQuery}
-                    onChange={(e) => setCenterQuery(e.target.value)}
-                    onFocus={() => setShowCenterDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
-                    placeholder="Search for a center"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                  />
-                  {showCenterDropdown && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-60 overflow-auto">
-                      {filteredCenters.map(center => (
-                        <div
-                          key={center._id}
-                          className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer"
-                          onMouseDown={() => {
-                            setLocalForm(prev => ({ ...prev, assignedCenter: center._id }));
-                            setCenterQuery(center.name);
-                            setShowCenterDropdown(false);
-                          }}
-                        >
-                          {center.name}, {center.area}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              {validationErrors.assignedCenter && (
-                <div className="text-red-500 text-sm mt-1">{validationErrors.assignedCenter}</div>
-              )}
+            {/* Assigned Center + Students */}
+<div className="space-y-4">
+  {/* Assigned Center */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Assigned Center <span className="text-red-600">*</span>
+    </label>
+
+    {centersError ? (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm mb-2">
+        <span className="block">{centersError}</span>
+        <button
+          type="button"
+          onClick={handleRetryCenters}
+          className="mt-1 px-2 py-1 bg-red-500 hover:bg-red-700 text-white text-xs rounded"
+        >
+          Retry
+        </button>
+      </div>
+    ) : null}
+
+    <div className="relative">
+      <input
+        type="text"
+        value={centerQuery}
+        onChange={(e) => setCenterQuery(e.target.value)}
+        onFocus={() => setShowCenterDropdown(true)}
+        onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
+        placeholder="Search for a center"
+        className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+      />
+      {showCenterDropdown && (
+        <div className="absolute z-10 w-full bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-60 overflow-auto">
+          {filteredCenters.map((center) => (
+            <div
+              key={center._id}
+              className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer"
+              onMouseDown={() => {
+                // set assigned center and fetch students for it
+                setLocalForm((prev) => ({ ...prev, assignedCenter: center._id, students: [] }));
+                setCenterQuery(center.name);
+                setShowCenterDropdown(false);
+                fetchStudentsForCenter(center._id); // calls GET /students/getByCenter/:centerId
+              }}
+            >
+              {center.name}{center.area ? `, ${center.area}` : ''}
             </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {validationErrors.assignedCenter && (
+      <div className="text-red-500 text-sm mt-1">{validationErrors.assignedCenter}</div>
+    )}
+  </div>
+
+  {/* Students (appears only after a center is chosen) */}
+  {localForm.assignedCenter ? (
+    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold text-gray-800">Students</h3>
+        {loadingStudents && <span className="text-sm text-gray-600">Loading…</span>}
+      </div>
+
+      {studentsError ? (
+        <div className="text-red-600 text-sm mb-2">{studentsError}</div>
+      ) : (
+        <>
+          <div className="mb-2">
+            <input
+              type="text"
+              value={studentFilter}
+              onChange={(e) => setStudentFilter(e.target.value)}
+              placeholder="Filter by student name"
+              className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            />
+          </div>
+
+          <div className="text-sm text-gray-600 mb-2">
+            Select multiple students by clicking; click again to deselect.
+          </div>
+
+          <div className="flex flex-wrap gap-2 max-h-64 overflow-auto">
+            {studentsByCenter
+              .filter((s) => (s?.name || '').toLowerCase().includes(studentFilter.toLowerCase()))
+              .map((s) => {
+                const id = s._id || s.id;
+                const selected = Array.isArray(localForm.students) && localForm.students.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      const current = Array.isArray(localForm.students) ? [...localForm.students] : [];
+                      const next = selected ? current.filter((x) => x !== id) : [...current, id];
+                      setLocalForm((prev) => ({ ...prev, students: next }));
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 ${
+                      selected
+                        ? 'bg-blue-100 text-blue-700 border-blue-700'
+                        : 'bg-white text-gray-700 border-gray-400 hover:bg-gray-100'
+                    }`}
+                    title={s.name}
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
+          </div>
+
+          {Array.isArray(localForm.students) && localForm.students.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {localForm.students.map((sid) => {
+                const s = studentsByCenter.find((x) => (x._id || x.id) === sid);
+                const label = s ? s.name : sid;
+                return (
+                  <span
+                    key={sid}
+                    className="px-3 py-1.5 rounded-full text-sm font-medium border-2 bg-blue-50 text-blue-700 border-blue-700"
+                  >
+                    {label}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLocalForm((prev) => ({ ...prev, students: prev.students.filter((x) => x !== sid) }))
+                      }
+                      className="ml-2 text-blue-800 hover:text-blue-900"
+                      aria-label="Remove"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  ) : null}
+</div>
 
             {/* Subjects - Compact */}
             <div className="mt-6">
