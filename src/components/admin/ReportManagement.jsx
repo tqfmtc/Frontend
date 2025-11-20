@@ -158,7 +158,7 @@ const ReportManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `attendance-report-${selectedMonth}-${selectedYear}.xlsx`;
+      a.download = `v endance-report-${selectedMonth}-${selectedYear}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

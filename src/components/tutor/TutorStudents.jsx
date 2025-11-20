@@ -198,6 +198,8 @@ const TutorStudents = () => {
       // Get tutor data from localStorage
       const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
       console.log('Tutor Data:', tutorData)
+      
+      console.log(userData.token)
       console.log('Assigned Center:', tutorData.assignedCenter)
       // Robust check for assignedCenter
       const assignedCenter = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
@@ -483,7 +485,7 @@ const TutorStudents = () => {
       if (!token) {
         throw new Error('Please login to continue')
       }
-
+      // console.log(token)
       const response = await fetch(`${import.meta.env.VITE_API_URL}/students/${selectedStudent._id}/attendance`, {
         method: 'POST',
         headers: {

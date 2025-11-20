@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiUserCheck, FiDollarSign, FiActivity } from 'react-icons/fi'
+import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiUserCheck, FiDollarSign, FiActivity,FiBook } from 'react-icons/fi'
 import { BiRupee } from 'react-icons/bi' // Importing rupee sign icon
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -46,14 +46,15 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
     { id: 'overview', label: 'Dashboard', icon: FiHome },
     { id: 'tutors', label: 'Tutors', icon: FiUsers },
     { id: 'hadiya', label: 'Hadiya', icon: FiDollarSign },
+    { id: 'centers', label: 'Centers', icon: FiMapPin },
+    { id: 'students', label: 'Students', icon: FiUser },
+    { id: 'attendance-control', label: 'Attendance Control', icon: FiActivity },
+    // { id: 'reports', label: 'Reports', icon: FiFileText },
     { id: 'guest-tutors', label: 'Guest Tutors', icon: FiUserPlus },
     { id: 'announcements', label: 'Announcements', icon: FiFileText },
-    { id: 'centers', label: 'Centers', icon: FiMapPin },
-    { id: 'reports', label: 'Reports', icon: FiFileText },
-    { id: 'students', label: 'Students', icon: FiUser },
     { id: 'admins', label: 'Admins', icon: FiUserPlus },
-    { id: 'supervisors', label: 'Supervisors', icon: FiUserCheck },
-    { id: 'attendance-control', label: 'Attendance Control', icon: FiActivity } // New tab added
+    { id: 'supervisors', label: 'Supervisors', icon: FiUserCheck }, // New tab added
+    { id: 'subject-management', label: 'Subject Management', icon: FiBook } // New tab for SubjectManagement
   ];
 
   if (isLoading) {
