@@ -6,7 +6,8 @@ import {
   FiSearch, 
   FiX,
   FiLoader,
-  FiSave
+  FiSave,
+  FiTrash2
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import useGet from '../CustomHooks/useGet';
@@ -44,6 +45,8 @@ const SubjectManagement = () => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [tutorCenterId, setTutorCenterId] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [studentsToRemove, setStudentsToRemove] = useState([]);
+  const [removeLoading, setRemoveLoading] = useState(false);
 
   // Get token from localStorage
   const getToken = () => {
@@ -166,10 +169,7 @@ const SubjectManagement = () => {
   const openModal = (subject) => {
     setSelectedSubject(subject);
     setSelectedStudents([]);
-    // Pre-select already enrolled students from center
-    if (subject.students && subject.students.length > 0) {
-      setSelectedStudents(subject.students.map(s => s._id || s));
-    }
+    // Don't pre-select already enrolled students
     setIsModalOpen(true);
   };
 
@@ -232,6 +232,64 @@ const SubjectManagement = () => {
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
     );
+  };
+
+  // Handle student removal toggle
+  const handleRemoveStudentToggle = (studentId) => {
+    setStudentsToRemove(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  // Remove students from subject
+  const handleRemoveStudents = async () => {
+    if (studentsToRemove.length === 0) return;
+
+    setRemoveLoading(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const requestBody = {
+        studentIds: studentsToRemove
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects/remove-students/${selectedSubject._id}`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData || errorMessage;
+        } catch (e) {
+          // Error parsing response
+        }
+        throw new Error(errorMessage);
+      }
+
+      toast.success(`${studentsToRemove.length} student(s) removed successfully!`);
+      setStudentsToRemove([]);
+      fetchSubjectByCenter(selectedSubject._id); // Refresh data
+      refetchSubjects(); // Refresh subject list
+    } catch (error) {
+      console.error('Error removing students:', error);
+      toast.error(error.message ? `Failed to remove students: ${error.message}` : 'Failed to remove students');
+    } finally {
+      setRemoveLoading(false);
+    }
   };
 
   if (loading) {
@@ -389,7 +447,7 @@ const SubjectManagement = () => {
                     {selectedSubject.students.map((student, idx) => (
                       <div
                         key={student._id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group"
                       >
                         <div className="flex items-center flex-1 min-w-0">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium text-sm mr-3 flex-shrink-0">
@@ -400,6 +458,18 @@ const SubjectManagement = () => {
                             <div className="text-sm text-gray-500 truncate">{student.email}</div>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStudentToggle(student._id)}
+                          className={`ml-3 p-2 rounded-lg transition-all flex-shrink-0 ${
+                            studentsToRemove.includes(student._id)
+                              ? 'bg-red-500 text-white'
+                              : 'bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600 md:group-hover:opacity-100 md:opacity-0 opacity-100'
+                          }`}
+                          title={studentsToRemove.includes(student._id) ? 'Remove from removal list' : 'Mark for removal'}
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -414,6 +484,25 @@ const SubjectManagement = () => {
             </div>
 
             <div className="flex justify-end gap-3 p-6 border-t">
+              {studentsToRemove.length > 0 && (
+                <button
+                  onClick={handleRemoveStudents}
+                  disabled={removeLoading}
+                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {removeLoading ? (
+                    <>
+                      <FiLoader className="w-4 h-4 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    <>
+                      <FiTrash2 className="w-4 h-4" />
+                      Remove Selected ({studentsToRemove.length})
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={closeViewModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
@@ -455,16 +544,12 @@ const SubjectManagement = () => {
                 <div className="border border-gray-300 rounded-lg p-4 max-h-96 overflow-y-auto bg-gray-50">
                   {students.length > 0 ? (
                     <div className="space-y-2">
-                      {students.map(student => {
-                        const isAlreadyEnrolled = selectedSubject?.students?.some(s => s._id === student._id);
-                        return (
+                      {students
+                        .filter(student => !selectedSubject?.students?.some(s => s._id === student._id))
+                        .map(student => (
                           <label
                             key={student._id}
-                            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                              isAlreadyEnrolled 
-                                ? 'bg-green-50 border border-green-200' 
-                                : 'hover:bg-white'
-                            }`}
+                            className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-white transition-colors"
                           >
                             <input
                               type="checkbox"
@@ -475,17 +560,14 @@ const SubjectManagement = () => {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium text-gray-900 truncate">
                                 {student.name}
-                                {isAlreadyEnrolled && (
-                                  <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full inline-block">
-                                    Already enrolled
-                                  </span>
-                                )}
                               </div>
                               <div className="text-sm text-gray-500 truncate">{student.email}</div>
                             </div>
                           </label>
-                        );
-                      })}
+                        ))}
+                      {students.filter(student => !selectedSubject?.students?.some(s => s._id === student._id)).length === 0 && (
+                        <p className="text-gray-500 text-sm text-center py-4">All available students are already enrolled</p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-gray-500 text-sm text-center py-4">No students available</p>
