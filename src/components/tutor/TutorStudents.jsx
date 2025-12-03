@@ -103,6 +103,8 @@ const TutorStudents = () => {
   const [editMode, setEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tutorsList, setTutorsList] = useState([])
+  const [loadingTutors, setLoadingTutors] = useState(false)
 
   // Get tutor data from localStorage
   const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
@@ -124,6 +126,7 @@ const TutorStudents = () => {
     gender: '',
     medium: '',
     aadharNumber: '',
+    assignedTutor: '',
     remarks: ''
   })
 
@@ -318,6 +321,7 @@ const TutorStudents = () => {
         gender: '',
         medium: '',
         aadharNumber: '',
+        assignedTutor: '',
         remarks: ''
       })
       refetch() // Refresh the students list
@@ -548,10 +552,36 @@ const TutorStudents = () => {
       gender: student.gender || '',
       medium: student.medium || '',
       aadharNumber: student.aadharNumber || '',
+      assignedTutor: (student.assignedTutor && student.assignedTutor._id) || student.assignedTutor || '',
       remarks: student.remarks || '',
       _id: student._id
     })
     setEditMode(true)
+    // Fetch tutors for this center
+    fetchTutorsForCenter(student.assignedCenter._id || student.assignedCenter)
+  }
+
+  // Fetch tutors by center
+  const fetchTutorsForCenter = async (centerId) => {
+    try {
+      setLoadingTutors(true)
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+      const token = userData.token
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/tutors/center/${centerId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (!response.ok) throw new Error('Failed to load tutors')
+      const data = await response.json()
+      setTutorsList(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching tutors:', error)
+      toast.error('Failed to load tutors list')
+    } finally {
+      setLoadingTutors(false)
+    }
   }
 
   const handleEditChange = (e) => {
@@ -654,6 +684,12 @@ const TutorStudents = () => {
           class: editFormData.class.trim()
         }
       }
+      
+      // Add assignedTutor to updatedData if it's being changed
+      if (editFormData.assignedTutor) {
+        updatedData.assignedTutor = editFormData.assignedTutor;
+      }
+      
       setFormError('');
       console.log('Updating student with data:', updatedData)
       const response = await fetch(`${import.meta.env.VITE_API_URL}/students/${editFormData._id}`, {
@@ -669,6 +705,7 @@ const TutorStudents = () => {
         setFormError(errorData.message || 'Failed to update student');
         throw new Error(errorData.message || 'Failed to update student')
       }
+      
       toast.success('Student updated successfully!')
       setEditMode(false)
       setShowDetails(null)
@@ -1383,6 +1420,10 @@ const TutorStudents = () => {
                 <p className="text-sm text-gray-500">Aadhar Number</p>
                 <p className="font-medium text-gray-900">{showDetails.aadharNumber}</p>
               </div>
+              <div>
+                <p className="text-sm text-gray-500">Assigned Tutor</p>
+                <p className="font-medium text-gray-900">{showDetails.assignedTutor?.name || showDetails.assignedTutor || 'Not Assigned'}</p>
+              </div>
             </div>
           </div>
 
@@ -1615,6 +1656,30 @@ const TutorStudents = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">Aadhar Number</label>
                 <input type="text" name="aadharNumber" value={editFormData.aadharNumber} onChange={handleEditChange} maxLength="14" placeholder="1234 5678 9012" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Tutor</label>
+                {loadingTutors ? (
+                  <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent-500 border-t-transparent mr-2"></div>
+                    <span className="text-sm text-gray-500">Loading tutors...</span>
+                  </div>
+                ) : (
+                  <select 
+                    name="assignedTutor" 
+                    value={editFormData.assignedTutor} 
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, assignedTutor: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                  >
+                    <option value="">Select a tutor</option>
+                    {tutorsList.map(tutor => (
+                      <option key={tutor._id} value={tutor._id}>
+                        {tutor.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Select a tutor to assign to this student</p>
               </div>
             </div>
             <div>
