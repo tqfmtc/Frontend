@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiGrid, FiUsers, FiLogOut, FiMenu, FiX, FiChevronLeft, FiUserPlus,FiClipboard,FiEye,FiUserCheck,FiCheckCircle ,FiTarget, FiBook   } from 'react-icons/fi'
+import { FiGrid, FiUsers, FiLogOut, FiMenu, FiX, FiChevronLeft, FiUserPlus,FiClipboard,FiEye,FiUserCheck,FiCheckCircle ,FiTarget, FiBook, FiBarChart2   } from 'react-icons/fi'
 import TutorSidebar from './TutorSidebar'
 import TutorOverview from './TutorOverview'
 import TutorStudents from './TutorStudents'
 import GuestTutorPage from '../../pages/GuestTutorPage'
 import SubjectManagement from './SubjectManagement'
+import MarksManagement from './MarksManagement'
 
 const TutorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
@@ -45,6 +46,8 @@ const TutorDashboard = () => {
         return <TutorStudents />
       case 'subjects':
         return <SubjectManagement />
+      case 'marks':
+        return <MarksManagement />
       case 'guest-tutor':
         return <GuestTutorPage />
       default:
@@ -56,6 +59,7 @@ const TutorDashboard = () => {
     { id: 'overview', label: 'Dashboard', icon: <FiGrid /> },
     { id: 'students', label: 'Students', icon: <FiUsers /> },
     { id: 'subjects', label: 'Subject Management', icon: <FiBook /> },
+    { id: 'marks', label: 'Marks Management', icon: <FiBarChart2 /> },
     { id: 'guest-tutor', label: 'Guest Tutor', icon: <FiUserPlus /> }
   ]
 
