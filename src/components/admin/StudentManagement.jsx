@@ -70,6 +70,8 @@ const StudentMarksDisplay = ({ student }) => {
         if (record.subject) {
           if (typeof record.subject === 'string') {
             subjectName = record.subject
+          } else if (record.subject.subjectName && typeof record.subject.subjectName === 'string') {
+            subjectName = record.subject.subjectName
           } else if (record.subject.name && typeof record.subject.name === 'string') {
             subjectName = record.subject.name
           } else if (record.subject._id) {
