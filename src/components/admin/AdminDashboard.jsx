@@ -13,6 +13,7 @@ import AdminGuestPage from '../../pages/AdminGuestPage';
 import AnnouncementManagement from './AnnouncementManagement';
 import AttendanceController from './AttendanceController'; // Import the AttendanceController
 import SubjectManagement from './SubjectManagement';
+import StudentReports from './StudentReports';
 
 import { FiMenu, FiX } from 'react-icons/fi'; // Icons for mobile menu toggle
 
@@ -93,8 +94,10 @@ const AdminDashboard = () => {
         return <AnnouncementManagement />;
       case 'attendance-control': // New case for AttendanceController
         return <AttendanceController />;
-        case 'subject-management': // New case for SubjectManagement
+      case 'subject-management': // New case for SubjectManagement
         return <SubjectManagement />;
+      case 'student-reports': // New case for StudentReports
+        return <StudentReports />;
       default:
         return (
           <div className="p-6">
