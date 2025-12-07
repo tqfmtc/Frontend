@@ -347,6 +347,103 @@ const TutorManagement = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Export tutors to CSV
+  const handleExportToExcel = () => {
+    if (!tutors || tutors.length === 0) {
+      setErrorMessage('No tutor data available to export');
+      setShowErrorPopover(true);
+      return;
+    }
+
+    // Filter tutors based on current status filter
+    let filteredData = tutors;
+    if (statusFilter !== 'all') {
+      filteredData = tutors.filter(t => t.status === statusFilter);
+    }
+
+    if (filteredData.length === 0) {
+      setErrorMessage('No tutors match the current filter');
+      setShowErrorPopover(true);
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      'Name',
+      'Email',
+      'Phone',
+      'Address',
+      'Qualification Type',
+      'Qualification Other',
+      'Qualification Status',
+      'Year of Completion',
+      'Madarsah Name',
+      'College Name',
+      'Specialization',
+      'Assigned Center',
+      'Subjects',
+      'Session Type',
+      'Session Timing',
+      'Assigned Hadiya Amount',
+      'Aadhar Number',
+      'Bank Name',
+      'Bank Branch',
+      'Account Number',
+      'IFSC Code',
+      'Status'
+    ];
+
+    // Convert tutors data to CSV rows
+    const rows = filteredData.map(tutor => [
+      tutor.name || '',
+      tutor.email || '',
+      tutor.phone || '',
+      tutor.address || '',
+      tutor.qualificationType || '',
+      tutor.qualificationOther || '',
+      tutor.qualificationStatus || '',
+      tutor.yearOfCompletion || '',
+      tutor.madarsahName || '',
+      tutor.collegeName || '',
+      tutor.specialization || '',
+      tutor.assignedCenter?.name || '',
+      Array.isArray(tutor.subjects) ? tutor.subjects.join('; ') : (tutor.subjects || ''),
+      tutor.sessionType || '',
+      tutor.sessionTiming || '',
+      tutor.assignedHadiyaAmount || '',
+      tutor.aadharNumber || '',
+      tutor.bankName || '',
+      tutor.bankBranch || '',
+      tutor.accountNumber || '',
+      tutor.ifscCode || '',
+      tutor.status || ''
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => {
+        // Escape commas and quotes in cell values
+        const cellStr = String(cell);
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      }).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tutors_${statusFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Calculate tutor stats
   const tutorStats = React.useMemo(() => {
     if (!tutors) return { total: 0, active: 0, inactive: 0 };
@@ -470,30 +567,63 @@ const TutorManagement = () => {
                   )}
                 </div>
               </div>
-              <button
-                style={{ 
-                  padding: '8px 20px', 
-                  background: 'white', 
-                  color: '#1e3a8a', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  fontWeight: '600', 
-                  fontSize: '16px', 
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap'
-                }}
-                onClick={handleAdd}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Add Tutor
-              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  style={{ 
+                    padding: '8px 20px', 
+                    background: 'rgba(255, 255, 255, 0.2)', 
+                    color: 'white', 
+                    border: '1px solid rgba(255, 255, 255, 0.3)', 
+                    borderRadius: '6px', 
+                    fontWeight: '600', 
+                    fontSize: '16px', 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={handleExportToExcel}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Export to Excel
+                </button>
+                <button
+                  style={{ 
+                    padding: '8px 20px', 
+                    background: 'white', 
+                    color: '#1e3a8a', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    fontWeight: '600', 
+                    fontSize: '16px', 
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onClick={handleAdd}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Tutor
+                </button>
+              </div>
             </div>
           </div>
           
