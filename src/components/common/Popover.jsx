@@ -91,7 +91,11 @@ const Popover = ({
     },
     message: {
       margin: 0,
-      lineHeight: '1.4',
+      lineHeight: '1.6',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      maxHeight: '400px',
+      overflowY: 'auto',
     },
     footer: {
       marginTop: '20px',

@@ -127,7 +127,9 @@ const TutorStudents = () => {
     medium: '',
     aadharNumber: '',
     assignedTutor: '',
-    remarks: ''
+    remarks: '',
+    schoolAddress: '',
+    homeAddress: ''
   })
 
   const refetchCenterContext = useCenterRefetch()
@@ -220,7 +222,9 @@ const TutorStudents = () => {
         medium: formData.medium,
         aadharNumber: formData.aadharNumber.trim(),
         assignedCenter: assignedCenter,
-        remarks: formData.remarks.trim()
+        remarks: formData.remarks.trim(),
+        homeAddress: formData.homeAddress.trim(),
+        schoolAddress: formData.schoolAddress.trim()
       };
 
       // Conditionally add contact and guardian info.
@@ -322,7 +326,9 @@ const TutorStudents = () => {
         medium: '',
         aadharNumber: '',
         assignedTutor: '',
-        remarks: ''
+        remarks: '',
+        schoolAddress: '',
+        homeAddress: ''
       })
       refetch() // Refresh the students list
       // Trigger center refetch for instant update
@@ -554,6 +560,8 @@ const TutorStudents = () => {
       aadharNumber: student.aadharNumber || '',
       assignedTutor: (student.assignedTutor && student.assignedTutor._id) || student.assignedTutor || '',
       remarks: student.remarks || '',
+      schoolAddress: student.schoolAddress || '',
+      homeAddress: student.homeAddress || '',
       _id: student._id
     })
     setEditMode(true)
@@ -668,6 +676,8 @@ const TutorStudents = () => {
         aadharNumber: editFormData.aadharNumber.trim(),
         assignedCenter: assignedCenter,
         remarks: editFormData.remarks.trim(),
+        schoolAddress: editFormData.schoolAddress.trim(),
+        homeAddress: editFormData.homeAddress.trim(),
         status: 'active' // Always set to active on edit (reactivate if inactive)
       }
       // Only add guardianInfo if isOrphan is true
@@ -1325,6 +1335,38 @@ const TutorStudents = () => {
                   required
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">
+                  Home Address
+                </label>
+                <input
+                  type="text"
+                  name="homeAddress"
+                  value={formData.homeAddress}
+                  onChange={handleChange}
+                  placeholder="Enter home address"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                  required
+                />
+              </div>
+
+              {!formData.isNonSchoolGoing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    School Address
+                  </label>
+                  <input
+                    type="text"
+                    name="schoolAddress"
+                    value={formData.schoolAddress}
+                    onChange={handleChange}
+                    placeholder="Enter school address"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div>
@@ -1423,6 +1465,14 @@ const TutorStudents = () => {
               <div>
                 <p className="text-sm text-gray-500">Assigned Tutor</p>
                 <p className="font-medium text-gray-900">{showDetails.assignedTutor?.name || showDetails.assignedTutor || 'Not Assigned'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Home Address</p>
+                <p className="font-medium text-gray-900">{showDetails.homeAddress || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">School Address</p>
+                <p className="font-medium text-gray-900">{showDetails.schoolAddress || '-'}</p>
               </div>
             </div>
           </div>
@@ -1657,6 +1707,19 @@ const TutorStudents = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">Aadhar Number</label>
                 <input type="text" name="aadharNumber" value={editFormData.aadharNumber} onChange={handleEditChange} maxLength="14" placeholder="1234 5678 9012" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" required />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">Home Address</label>
+                <input type="text" name="homeAddress" value={editFormData.homeAddress} onChange={handleEditChange} placeholder="Enter home address" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" required />
+              </div>
+
+              {!editFormData.isNonSchoolGoing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">School Address</label>
+                  <input type="text" name="schoolAddress" value={editFormData.schoolAddress} onChange={handleEditChange} placeholder="Enter school address" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" required />
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Tutor</label>
                 {loadingTutors ? (

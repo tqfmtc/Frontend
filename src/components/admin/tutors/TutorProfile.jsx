@@ -148,6 +148,13 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
+                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                    {tutor.joiningDate ? new Date(tutor.joiningDate).toLocaleDateString() : 'Not provided'}
+                  </div>
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                   <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm min-h-[80px]">

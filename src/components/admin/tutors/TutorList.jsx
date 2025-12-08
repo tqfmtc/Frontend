@@ -305,10 +305,11 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
           <colgroup>
             <col style={{ width: '15%' }} /> {/* Name */}
             <col style={{ width: '10%' }} /> {/* Phone */}
-            <col style={{ width: '20%' }} /> {/* Email */}
+            <col style={{ width: '15%' }} /> {/* Email */}
             <col style={{ width: '14%' }} /> {/* Center */}
+            <col style={{ width: '10%' }} /> {/* Joining Date */}
             <col style={{ width: '20%' }} /> {/* Actions */}
-            <col style={{ width: '13%' }} /> {/* Status */}
+            <col style={{ width: '10%' }} /> {/* Status */}
           </colgroup>
           <thead>
             <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
@@ -316,6 +317,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Phone</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Email</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Center</th>
+              <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Joining Date</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Actions</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Status</th>
 
@@ -357,6 +359,9 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                         {tutor.assignedCenter.name || 'Unknown'}
                       </div>
                     ) : 'Not assigned'}
+                  </td>
+                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
+                    {tutor.joiningDate ? new Date(tutor.joiningDate).toLocaleDateString() : 'N/A'}
                   </td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>
