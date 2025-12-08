@@ -26,6 +26,7 @@ const initialState = {
   bankBranch: '',
   ifscCode: '',
   aadharNumber: '',
+  joiningDate: '', // Optional, defaults to today if empty
   // NEW
   students: []
 };
@@ -74,7 +75,7 @@ const subjectsList = [
   { value: 'Hindi', label: 'Hindi' },
 ];
 
-const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitting }) => {
+const AddTutorForm = ({ onSubmit, onCancel, formData, setFormData, fieldErrors, isSubmitting, errorMessage, onErrorClose }) => {
   const navigate = useNavigate();
   const [centers, setCenters] = useState([]);
   const [centerQuery, setCenterQuery] = useState('');
@@ -86,11 +87,20 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
   const [studentsError, setStudentsError] = useState(null);
   const [studentFilter, setStudentFilter] = useState('');
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
   const [showSuccessPopover, setShowSuccessPopover] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (errorMessage) {
+      setErrorMsg(errorMessage);
+      setShowErrorPopover(true);
+    }
+  }, [errorMessage]);
 
   useEffect(() => {
     async function fetchCenters() {
@@ -784,6 +794,23 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                   {(localForm.address || '').length}/200 characters
                 </div>
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Joining Date <span className="text-gray-500">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={localForm.joiningDate || ''}
+                  onChange={handleInputChange}
+                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                  name="joiningDate"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
+                />
+                <div className="text-xs text-red-500 mt-1">
+                  Defaults to today if left blank
+                </div>
+              </div>
             </div>
 
             {/* Compact Password strength indicator */}
@@ -802,7 +829,7 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
                 </div>
               </div>
             )}
-            </div>
+          </div>
 
             {/* Session Information */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[400px] flex flex-col">
@@ -915,76 +942,71 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       {studentsError ? (
         <div className="text-red-600 text-sm mb-2">{studentsError}</div>
       ) : (
-        <>
-          <div className="mb-2">
-            <input
-              type="text"
-              value={studentFilter}
-              onChange={(e) => setStudentFilter(e.target.value)}
-              placeholder="Filter by student name"
-              className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            />
-          </div>
+        <div className="relative">
+          {/* Dropdown Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowStudentDropdown(!showStudentDropdown)}
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded flex justify-between items-center text-left focus:ring-2 focus:ring-blue-500"
+          >
+            <span className="text-sm text-gray-700">
+              {localForm.students && localForm.students.length > 0
+                ? `${localForm.students.length} Student${localForm.students.length > 1 ? 's' : ''} Selected`
+                : "Select Students"}
+            </span>
+            <svg className={`w-5 h-5 text-gray-500 transition-transform ${showStudentDropdown ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
-          <div className="text-sm text-gray-600 mb-2">
-            Select multiple students by clicking; click again to deselect.
-          </div>
+          {/* Dropdown Content */}
+          {showStudentDropdown && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-hidden flex flex-col">
+              {/* Filter */}
+              <div className="p-2 border-b border-gray-200">
+                <input
+                  type="text"
+                  value={studentFilter}
+                  onChange={(e) => setStudentFilter(e.target.value)}
+                  placeholder="Filter by student name..."
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
 
-          <div className="flex flex-wrap gap-2 max-h-64 overflow-auto">
-            {studentsByCenter
-              .filter((s) => (s?.name || '').toLowerCase().includes(studentFilter.toLowerCase()))
-              .map((s) => {
-                const id = s._id || s.id;
-                const selected = Array.isArray(localForm.students) && localForm.students.includes(id);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      const current = Array.isArray(localForm.students) ? [...localForm.students] : [];
-                      const next = selected ? current.filter((x) => x !== id) : [...current, id];
-                      setLocalForm((prev) => ({ ...prev, students: next }));
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 ${
-                      selected
-                        ? 'bg-blue-100 text-blue-700 border-blue-700'
-                        : 'bg-white text-gray-700 border-gray-400 hover:bg-gray-100'
-                    }`}
-                    title={s.name}
-                  >
-                    {s.name}
-                  </button>
-                );
-              })}
-          </div>
-
-          {Array.isArray(localForm.students) && localForm.students.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {localForm.students.map((sid) => {
-                const s = studentsByCenter.find((x) => (x._id || x.id) === sid);
-                const label = s ? s.name : sid;
-                return (
-                  <span
-                    key={sid}
-                    className="px-3 py-1.5 rounded-full text-sm font-medium border-2 bg-blue-50 text-blue-700 border-blue-700"
-                  >
-                    {label}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLocalForm((prev) => ({ ...prev, students: prev.students.filter((x) => x !== sid) }))
-                      }
-                      className="ml-2 text-blue-800 hover:text-blue-900"
-                      aria-label="Remove"
-                    >
-                      ×
-                    </button>
-                  </span>
-                );
-              })}
+              {/* List */}
+              <div className="overflow-y-auto p-2">
+                {studentsByCenter
+                  .filter((s) => (s?.name || '').toLowerCase().includes(studentFilter.toLowerCase()))
+                  .map((s, index) => {
+                    const id = s._id || s.id;
+                    const isSelected = Array.isArray(localForm.students) && localForm.students.includes(id);
+                    return (
+                      <label key={id} className="flex items-center px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            const current = Array.isArray(localForm.students) ? [...localForm.students] : [];
+                            const next = isSelected ? current.filter((x) => x !== id) : [...current, id];
+                            setLocalForm((prev) => ({ ...prev, students: next }));
+                          }}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          <span className="font-mono text-gray-500 mr-1">{index + 1}.</span>
+                          {s.name}
+                        </span>
+                      </label>
+                    );
+                  })}
+                {studentsByCenter.length === 0 && (
+                  <div className="text-center py-2 text-sm text-gray-500">No students found</div>
+                )}
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   ) : null}
@@ -1386,8 +1408,12 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
               // Reset form to initial state
               setLocalForm(initialState);
               setValidationErrors({});
-              // Navigate back to admin dashboard
-              navigate('/admin-dashboard', { state: { activeTab: 'tutors' } });
+              // Call onCancel if provided, otherwise navigate
+              if (onCancel) {
+                onCancel();
+              } else {
+                navigate('/admin-dashboard', { state: { activeTab: 'tutors' } });
+              }
             }}
             className="px-3 py-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded font-medium text-sm shadow"
           >
@@ -1419,9 +1445,13 @@ const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitti
       {/* Error Popover */}
       <Popover
         isOpen={showErrorPopover}
-        onClose={() => setShowErrorPopover(false)}
+        onClose={() => {
+          setShowErrorPopover(false);
+          setErrorMsg('');
+          if (onErrorClose) onErrorClose();
+        }}
         title="Error!"
-        message="Failed to add tutor. Please try again."
+        message={errorMsg || 'Failed to add tutor. Please try again.'}
         type="error"
       />
       

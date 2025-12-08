@@ -116,10 +116,36 @@ const TutorManagement = () => {
           console.error('Error Response Data:', apiError.response.data);
           console.error('Error Response Status:', apiError.response.status);
           
-          if (apiError.response.data && apiError.response.data.message) {
-            errorMsg = `Server Error: ${apiError.response.data.message}`;
-          } else if (apiError.response.data && apiError.response.data.error) {
-            errorMsg = `Server Error: ${apiError.response.data.error}`;
+          const responseData = apiError.response.data;
+          
+          // Handle validation errors from backend (express-validator)
+          if (responseData.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+            const validationErrors = responseData.errors.map(err => `${err.path}: ${err.msg}`).join('\n');
+            errorMsg = `Validation Error:\n${validationErrors}`;
+          } else if (responseData.error) {
+            // Check error field first (contains detailed errors like duplicate key)
+            let errorText = responseData.error;
+            
+            // Format duplicate key errors to be user-friendly
+            if (errorText.includes('E11000 duplicate key')) {
+              if (errorText.includes('email')) {
+                const emailMatch = errorText.match(/email: "([^"]+)"/);
+                const email = emailMatch ? emailMatch[1] : 'This email';
+                errorMsg = `Email Already Registered: "${email}" is already in use. Please use a different email address.`;
+              } else if (errorText.includes('phone')) {
+                const phoneMatch = errorText.match(/phone: "([^"]+)"/);
+                const phone = phoneMatch ? phoneMatch[1] : 'This phone number';
+                errorMsg = `Phone Already Registered: "${phone}" is already in use. Please use a different phone number.`;
+              } else {
+                errorMsg = 'Duplicate Entry: This information is already registered in the system. Please check your input.';
+              }
+            } else {
+              errorMsg = errorText;
+            }
+          } else if (responseData.message) {
+            errorMsg = responseData.message;
+          } else if (apiError.response.status === 400) {
+            errorMsg = 'Invalid request data. Please check your input.';
           } else {
             errorMsg = `Server Error ${apiError.response.status}: ${apiError.message}`;
           }
@@ -129,60 +155,57 @@ const TutorManagement = () => {
         }
         
         setErrorMessage(errorMsg);
-        setShowErrorPopover(true);
-        throw apiError; // Re-throw to be caught by outer catch
+        setIsSubmitting(false);
+        return; // Don't throw, just return to prevent outer catch from overwriting
       }
     } catch (err) {
       console.error('Add Tutor Error:', err);
-      if (!showErrorPopover) { // Only set if not already set by inner catch
-        // Specific handling for 500 errors
-        if (err.response && err.response.status === 500) {
-          console.error('500 Server Error Details:', {
-            data: err.response.data,
-            headers: err.response.headers,
-            url: err.response.config?.url,
-            method: err.response.config?.method,
-            requestData: err.response.config?.data,
-          });
-          
-          // Create a more detailed error message for 500 errors
-          let detailedError = 'Server Error (500): The server encountered an unexpected condition.';
-          
-          // Check for specific known errors
-          const errorText = err.response.data?.error || '';
-          
-          // Handle duplicate email error
-          if (errorText.includes('duplicate key error') && errorText.includes('email')) {
-            const email = formData.email || 'This email';
-            detailedError = `Email already in use: "${email}" is already registered for another tutor. Please use a different email address.`;
-          }
-          // Handle duplicate phone error
-          else if (errorText.includes('duplicate key error') && errorText.includes('phone')) {
-            const phone = formData.phone || 'This phone number';
-            detailedError = `Phone number already in use: "${phone}" is already registered for another tutor. Please use a different phone number.`;
-          }
-          // Generic error handling if not one of the above specific cases
-          else if (err.response.data) {
-            if (typeof err.response.data === 'string') {
-              detailedError += '\n\nServer message: ' + err.response.data;
-            } else if (err.response.data.message) {
-              detailedError += '\n\nServer message: ' + err.response.data.message;
-            } else if (err.response.data.error) {
-              detailedError += '\n\nServer error: ' + err.response.data.error;
-            }
-          }
-          
-          // Add timestamp to help identify patterns
-          const timestamp = new Date().toISOString();
-          detailedError += `\n\nError Timestamp: ${timestamp}`;
-          
-          setErrorMessage(detailedError);
-        } else {
-          setErrorMessage(err.message || 'Failed to add tutor');
+      // This catch is for any other unexpected errors
+      let detailedError = 'An unexpected error occurred';
+      
+      if (err.response && err.response.status === 500) {
+        console.error('500 Server Error Details:', {
+          data: err.response.data,
+          headers: err.response.headers,
+          url: err.response.config?.url,
+          method: err.response.config?.method,
+          requestData: err.response.config?.data,
+        });
+        
+        detailedError = 'Server Error (500): The server encountered an unexpected condition.';
+        
+        // Check for specific known errors
+        const errorText = err.response.data?.error || '';
+        
+        // Handle duplicate email error
+        if (errorText.includes('duplicate key error') && errorText.includes('email')) {
+          const email = formData.email || 'This email';
+          detailedError = `Email already in use: "${email}" is already registered for another tutor. Please use a different email address.`;
         }
-        setShowErrorPopover(true);
+        // Handle duplicate phone error
+        else if (errorText.includes('duplicate key error') && errorText.includes('phone')) {
+          const phone = formData.phone || 'This phone number';
+          detailedError = `Phone number already in use: "${phone}" is already registered for another tutor. Please use a different phone number.`;
+        }
+        // Generic error handling if not one of the above specific cases
+        else if (err.response.data) {
+          if (typeof err.response.data === 'string') {
+            detailedError += '\n\nServer message: ' + err.response.data;
+          } else if (err.response.data.message) {
+            detailedError += '\n\nServer message: ' + err.response.data.message;
+          } else if (err.response.data.error) {
+            detailedError += '\n\nServer error: ' + err.response.data.error;
+          }
+        }
+        
+        // Add timestamp to help identify patterns
+        const timestamp = new Date().toISOString();
+        detailedError += `\n\nError Timestamp: ${timestamp}`;
+      } else {
+        detailedError = err.message || 'Failed to add tutor';
       }
-    } finally {
+      
+      setErrorMessage(detailedError);
       setIsSubmitting(false);
     }
   };
@@ -316,9 +339,47 @@ const TutorManagement = () => {
       // Trigger refresh of tutor list for when we return to it
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to update tutor');
-      setShowErrorPopover(true);
-    } finally {
+      let errorMsg = 'Failed to update tutor';
+      
+      if (err.response) {
+        const responseData = err.response.data;
+        
+        // Handle validation errors from backend (express-validator)
+        if (responseData.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+          const validationErrors = responseData.errors.map(e => `${e.path}: ${e.msg}`).join('\n');
+          errorMsg = `Validation Error:\n${validationErrors}`;
+        } else if (responseData.error) {
+          // Check error field first (contains detailed errors like duplicate key)
+          let errorText = responseData.error;
+          
+          // Format duplicate key errors to be user-friendly
+          if (errorText.includes('E11000 duplicate key')) {
+            if (errorText.includes('email')) {
+              const emailMatch = errorText.match(/email: "([^"]+)"/);
+              const email = emailMatch ? emailMatch[1] : 'This email';
+              errorMsg = `Email Already Registered: "${email}" is already in use. Please use a different email address.`;
+            } else if (errorText.includes('phone')) {
+              const phoneMatch = errorText.match(/phone: "([^"]+)"/);
+              const phone = phoneMatch ? phoneMatch[1] : 'This phone number';
+              errorMsg = `Phone Already Registered: "${phone}" is already in use. Please use a different phone number.`;
+            } else {
+              errorMsg = 'Duplicate Entry: This information is already registered in the system. Please check your input.';
+            }
+          } else {
+            errorMsg = errorText;
+          }
+        } else if (responseData.message) {
+          errorMsg = responseData.message;
+        } else if (err.response.status === 400) {
+          errorMsg = 'Invalid request data. Please check your input.';
+        } else {
+          errorMsg = `Server Error ${err.response.status}: ${err.message}`;
+        }
+      } else {
+        errorMsg = err.message || 'Failed to update tutor';
+      }
+      
+      setErrorMessage(errorMsg);
       setIsSubmitting(false);
     }
   };
@@ -675,10 +736,13 @@ const TutorManagement = () => {
           </div>
           <AddTutorForm 
             onSubmit={handleAddTutor} 
+            onCancel={handleBackToList}
             formData={formData} 
             setFormData={setFormData} 
             fieldErrors={fieldErrors} 
-            isSubmitting={isSubmitting} 
+            isSubmitting={isSubmitting}
+            errorMessage={errorMessage}
+            onErrorClose={() => setErrorMessage('')}
           />
         </div>
       )}
@@ -720,7 +784,9 @@ const TutorManagement = () => {
             fieldErrors={fieldErrors} 
             isSubmitting={isSubmitting} 
             tutorId={selectedTutor?._id}
-            onCancel={handleBackToList} /* Added to close form instead of navigating back */
+            onCancel={handleBackToList}
+            errorMessage={errorMessage}
+            onErrorClose={() => setErrorMessage('')}
           />
         </div>
       )}
