@@ -57,6 +57,10 @@ const CenterManagement = () => {
   const [deletingCenter, setDeletingCenter] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   // Get centers data with our fixed useGet hook
   const { response: centers, error, loading, refetch } = useGet("/Centers");
@@ -277,12 +281,19 @@ const CenterManagement = () => {
            matchesStatus;
   }) || [];
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCenters.length / itemsPerPage);
+  const indexOfLastCenter = currentPage * itemsPerPage;
+  const indexOfFirstCenter = indexOfLastCenter - itemsPerPage;
+  const currentCenters = filteredCenters.slice(indexOfFirstCenter, indexOfLastCenter);
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const downloadCommentsReport = () => {
@@ -649,7 +660,7 @@ const CenterManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCenters.map((center) => {
+              {currentCenters.map((center) => {
                 const isInactive = center.status === 'inactive';
                 return (
                   <tr
@@ -720,6 +731,74 @@ const CenterManagement = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {filteredCenters.length > 0 && (
+          <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-gray-50 border-t border-gray-200 space-y-4 md:space-y-0">
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-medium">{indexOfFirstCenter + 1}</span> to <span className="font-medium">{Math.min(indexOfLastCenter, filteredCenters.length)}</span> of <span className="font-medium">{filteredCenters.length}</span> centers
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                Previous
+              </button>
+              
+              <div className="flex space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                Next
+              </button>
+            </div>
+            
+            <div className="text-sm text-gray-500">
+              Page {currentPage} of {totalPages}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Details Modal */}

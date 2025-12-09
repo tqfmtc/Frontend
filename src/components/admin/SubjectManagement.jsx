@@ -27,6 +27,8 @@ const SubjectManagement = () => {
   const [modalMode, setModalMode] = useState('create'); // 'create', 'edit', 'view', 'add-students', 'add-tutors'
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
 
   // Form state - using 'subjectName' to match schema
   const [formData, setFormData] = useState({
@@ -69,6 +71,12 @@ const SubjectManagement = () => {
       subject.subjectName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [subjects, searchQuery]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+  const indexOfLastSubject = currentPage * itemsPerPage;
+  const indexOfFirstSubject = indexOfLastSubject - itemsPerPage;
+  const currentSubjects = filteredSubjects.slice(indexOfFirstSubject, indexOfLastSubject);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -359,7 +367,7 @@ const SubjectManagement = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSubjects.map((subject) => (
+                {currentSubjects.map((subject) => (
                   <tr key={subject._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center">
@@ -435,6 +443,55 @@ const SubjectManagement = () => {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination Section */}
+            {filteredSubjects.length > 0 && (
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing {indexOfFirstSubject + 1} to {Math.min(indexOfLastSubject, filteredSubjects.length)} of {filteredSubjects.length} subjects
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const pageNum = totalPages <= 5 ? i + 1 : Math.max(1, currentPage - 2) + i;
+                    if (pageNum > totalPages) return null;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1 rounded-lg transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+                
+                <div className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-8">

@@ -12,7 +12,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
   const [filteredTutors, setFilteredTutors] = useState([]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 15;
   
   // Popover states
   const [showDeletePopover, setShowDeletePopover] = useState(false);
@@ -463,57 +463,90 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
         </table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {filteredTutors.length > 0 && (
           <div style={{
             marginTop: '16px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '8px',
-            flexWrap: 'wrap'
+            padding: '12px 16px',
+            background: '#f9fafb',
+            borderRadius: '8px',
+            flexWrap: 'wrap',
+            gap: '12px'
           }}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: '1px solid #e5e7eb',
-                background: currentPage === 1 ? '#f9fafb' : 'white',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              Prev
-            </button>
-            {[...Array(totalPages)].map((_, idx) => (
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              Showing <span style={{ fontWeight: '600' }}>{indexOfFirstTutor + 1}</span> to <span style={{ fontWeight: '600' }}>{Math.min(indexOfLastTutor, filteredTutors.length)}</span> of <span style={{ fontWeight: '600' }}>{filteredTutors.length}</span> tutors
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
               <button
-                key={idx}
-                onClick={() => setCurrentPage(idx + 1)}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
                 style={{
-                  padding: '4px 8px',
+                  padding: '6px 12px',
                   borderRadius: '6px',
                   border: '1px solid #e5e7eb',
-                  background: currentPage === idx + 1 ? '#dbeafe' : 'white',
-                  color: currentPage === idx + 1 ? '#1e40af' : '#374151',
-                  cursor: 'pointer'
+                  background: currentPage === 1 ? '#f9fafb' : 'white',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }}
               >
-                {idx + 1}
+                Previous
               </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: '1px solid #e5e7eb',
-                background: currentPage === totalPages ? '#f9fafb' : 'white',
-                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-              }}
-            >
-              Next
-            </button>
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #e5e7eb',
+                      background: currentPage === pageNum ? '#3b82f6' : 'white',
+                      color: currentPage === pageNum ? 'white' : '#374151',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                  background: currentPage === totalPages ? '#f9fafb' : 'white',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Next
+              </button>
+            </div>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              Page <span style={{ fontWeight: '600' }}>{currentPage}</span> of <span style={{ fontWeight: '600' }}>{totalPages}</span>
+            </div>
           </div>
         )}
       </div>
