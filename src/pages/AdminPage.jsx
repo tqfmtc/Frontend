@@ -46,15 +46,10 @@ const AdminPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('userData', JSON.stringify({
-          _id: data._id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          token: data.token
-        }));
-      // Store token separately for legacy components
-      localStorage.setItem('token', data.token);
+        // Store the COMPLETE response data including permissions
+        localStorage.setItem('userData', JSON.stringify(data));
+        // Store token separately for legacy components
+        localStorage.setItem('token', data.token);
         setIsLoggedIn(true);
         navigate('/admin-dashboard');
       } else {

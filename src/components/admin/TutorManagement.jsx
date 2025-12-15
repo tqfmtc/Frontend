@@ -5,13 +5,24 @@ import UpdateTutorForm from './tutors/UpdateTutorForm';
 import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
-import useGet from '../CustomHooks/useGet';
+import { usePermissions } from '../../hooks/usePermissions';
+import { NoAccessSection } from '../common/PermissionGuard';
+import WriteOnlyDisclaimerModal from '../common/WriteOnlyDisclaimerModal';
+import { useWriteOnly } from '../../context/WriteOnlyContext';
 
 const TutorManagement = () => {
+  const permUI = usePermissions('tutors');
+  const { getTemporaryEntries, addTemporaryEntry, initializeWriteOnly, hasDisclaimerBeenShown, markDisclaimerShown } = useWriteOnly();
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
   const [selectedTutor, setSelectedTutor] = useState(null);
-  const { response: tutors } = useGet('/tutors');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
+  const [addedTutors, setAddedTutors] = useState([]); // For write-only mode
+  
+  // Only fetch tutors if user has read permission - set to null otherwise
+  const [tutors, setTutors] = useState(null);
+  const [tutorsLoading, setTutorsLoading] = useState(false);
 
   // State for form data, errors, etc.
   const [formData, setFormData] = useState({});
@@ -23,6 +34,65 @@ const TutorManagement = () => {
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showLoginPopover, setShowLoginPopover] = useState(false);
+
+  // Fetch tutors only if user has read permission
+  useEffect(() => {
+    if (!permUI.canRead) {
+      setTutors(null);
+      setTutorsLoading(false);
+      return;
+    }
+
+    const fetchTutors = async () => {
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
+
+      try {
+        setTutorsLoading(true);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/tutors`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch tutors');
+        const data = await res.json();
+        setTutors(data);
+      } catch (err) {
+        console.error('Error fetching tutors:', err);
+      } finally {
+        setTutorsLoading(false);
+      }
+    };
+
+    fetchTutors();
+  }, [permUI.canRead]);
+
+  // Initialize write-only mode
+  useEffect(() => {
+    if (permUI.isWriteOnly) {
+      initializeWriteOnly('tutors');
+      if (!hasDisclaimerBeenShown('tutors')) {
+        setShowDisclaimerModal(true);
+        markDisclaimerShown('tutors');
+      }
+    }
+  }, [permUI.isWriteOnly, initializeWriteOnly, hasDisclaimerBeenShown, markDisclaimerShown]);
+
+  // Calculate tutor stats - MUST be before conditional returns
+  const tutorStats = React.useMemo(() => {
+    if (!tutors) return { total: 0, active: 0, inactive: 0 };
+    return {
+      total: tutors.length,
+      active: tutors.filter(t => t.status === 'active').length,
+      inactive: tutors.filter(t => t.status === 'inactive').length
+    };
+  }, [tutors]);
+
+  if (permUI.hasNoAccess) {
+    return <NoAccessSection />;
+  }
 
   // Handlers for switching modes
   const handleAdd = () => {
@@ -103,6 +173,12 @@ const TutorManagement = () => {
         const data = response.data;
         // With axios, successful responses come to this point
         setIsSubmitting(false);
+        
+        // Write-only logic
+        if (permUI.isWriteOnly) {
+            addTemporaryEntry('tutors', data.tutor || data);
+        }
+
         // Don't immediately reset - let the form show its success message first
       } catch (apiError) {
         // Detailed error handling for API errors
@@ -505,19 +581,10 @@ const TutorManagement = () => {
     document.body.removeChild(link);
   };
 
-  // Calculate tutor stats
-  const tutorStats = React.useMemo(() => {
-    if (!tutors) return { total: 0, active: 0, inactive: 0 };
-    return {
-      total: tutors.length,
-      active: tutors.filter(t => t.status === 'active').length,
-      inactive: tutors.filter(t => t.status === 'inactive').length
-    };
-  }, [tutors]);
-
   // Render based on mode
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <WriteOnlyDisclaimerModal isOpen={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
       {mode === 'list' && (
         <>
           <div style={{ 
@@ -660,6 +727,7 @@ const TutorManagement = () => {
                   </svg>
                   Export to Excel
                 </button>
+                {permUI.canWrite && (
                 <button
                   style={{ 
                     padding: '8px 20px', 
@@ -684,9 +752,18 @@ const TutorManagement = () => {
                   </svg>
                   Add Tutor
                 </button>
+                )}
               </div>
             </div>
           </div>
+          
+          {/* Write Only Disclaimer - Handled by Modal now, but keeping inline for visibility if needed */}
+          {permUI.isWriteOnly && (
+            <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 rounded-md mx-6 mt-4">
+              <p className="font-bold">Write Only Access</p>
+              <p>You can only add new entries. You cannot view existing entries except for the ones you just added. Refreshing the page will clear the list.</p>
+            </div>
+          )}
           
           <div style={{ 
             background: 'white', 
@@ -695,6 +772,8 @@ const TutorManagement = () => {
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)'
           }}>
             <TutorList 
+              permissions={permUI}
+              addedTutors={getTemporaryEntries('tutors')}
               onEdit={handleEdit} 
               onDelete={handleDeleteTutor} 
               onProfile={handleProfile} 
