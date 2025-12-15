@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 import Popover from '../../common/Popover';
 
-const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
+const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all', permissions, addedTutors }) => {
   // All state hooks at the top
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +21,15 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
 
   // Initial data fetch
   useEffect(() => {
-    fetchTutors();
-  }, []);
+    if (permissions?.read) {
+      fetchTutors();
+    } else if (permissions?.write) {
+      setTutors(addedTutors || []);
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
+  }, [permissions, addedTutors]);
 
   // Re-filter when statusFilter prop changes
   useEffect(() => {
@@ -365,8 +372,10 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                   </td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button 
-                        onClick={() => onProfile(tutor)}
+                      {permissions?.write && (
+                        <>
+                          <button 
+                            onClick={() => onEdit(tutor)}
                         style={{ 
                           padding: '4px 8px', 
                           background: '#f3f4f6', 
@@ -439,6 +448,8 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                         </svg>
                         Delete
                       </button>
+                        </>
+                      )}
                     </div>
                   </td>
                   <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>

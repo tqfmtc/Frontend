@@ -18,6 +18,7 @@ import GuestLoginPage from './pages/GuestLoginPage'
 import GuestDashboard from './pages/GuestDashboard'
 import AdminActivityLogsPage from './pages/AdminActivityLogsPage'
 import { CenterRefetchProvider } from './context/CenterRefetchContext';
+import { WriteOnlyProvider } from './context/WriteOnlyContext';
 import AnnouncementBanner from './components/Announcement/AnnouncementBanner';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 
@@ -63,40 +64,42 @@ function App() {
   
   return (
     <CenterRefetchProvider>
-    <div className="flex flex-col min-h-screen">
-      {!hideNavbar && <Navbar />}
-      <AnnouncementBanner />
-      <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/tutor" element={<TutorPage />} />
-          <Route path="/tutor/forgot-password" element={<TutorForgotPassword />} />
-          <Route path="/tutor/password-reset/:token" element={<TutorPasswordReset />} />
-          <Route path="/supervisor" element={<SupervisorPage />} />
-          <Route path="/guest-login" element={<GuestLoginPage />} />
-          <Route path="/guest-dashboard" element={<GuestDashboard />} />
-          <Route 
-            path="/admin-dashboard" 
-            element={
-              <ProtectedRoute role="admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/supervisor-dashboard" 
-            element={
-              <ProtectedRoute role="supervisor">
-                <SupervisorDashboard />
-              </ProtectedRoute>
-            } />
-          <Route path="/tutor-dashboard" element={<ProtectedTutorRoute><TutorDashboard /></ProtectedTutorRoute>} />
-        </Routes>
-      </main>
-      <ToastContainer />
-      <PWAInstallPrompt />
-      {/* <Footer /> */}
-    </div>
+      <WriteOnlyProvider>
+        <div className="flex flex-col min-h-screen">
+          {!hideNavbar && <Navbar />}
+          <AnnouncementBanner />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/tutor" element={<TutorPage />} />
+              <Route path="/tutor/forgot-password" element={<TutorForgotPassword />} />
+              <Route path="/tutor/password-reset/:token" element={<TutorPasswordReset />} />
+              <Route path="/supervisor" element={<SupervisorPage />} />
+              <Route path="/guest-login" element={<GuestLoginPage />} />
+              <Route path="/guest-dashboard" element={<GuestDashboard />} />
+              <Route 
+                path="/admin-dashboard" 
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="/supervisor-dashboard" 
+                element={
+                  <ProtectedRoute role="supervisor">
+                    <SupervisorDashboard />
+                  </ProtectedRoute>
+                } />
+              <Route path="/tutor-dashboard" element={<ProtectedTutorRoute><TutorDashboard /></ProtectedTutorRoute>} />
+            </Routes>
+          </main>
+          <ToastContainer />
+          <PWAInstallPrompt />
+          {/* <Footer /> */}
+        </div>
+      </WriteOnlyProvider>
     </CenterRefetchProvider>
   )
 }

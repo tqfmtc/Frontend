@@ -122,8 +122,9 @@ const StudentMarksDisplay = ({ student }) => {
   )
 }
 
-const StudentManagement = () => {
+const StudentManagement = ({ permissions }) => {
   const [students, setStudents] = useState([]);
+  const [addedStudents, setAddedStudents] = useState([]); // For write-only mode
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCenter, setSelectedCenter] = useState('');
@@ -195,6 +196,15 @@ const StudentManagement = () => {
   }, []);
 
   const fetchStudents = async () => {
+    if (!permissions?.read) {
+      if (permissions?.write) {
+        setStudents(addedStudents);
+        setFilteredStudents(addedStudents);
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const token = getToken();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/students`, {
@@ -457,7 +467,15 @@ const StudentManagement = () => {
 
       toast.success(isEditing ? 'Student updated successfully' : 'Student created successfully');
       setShowFormModal(false);
-      fetchStudents();
+      
+      if (!isEditing && !permissions?.read && permissions?.write) {
+        const newStudent = data.student || data;
+        setAddedStudents(prev => [...prev, newStudent]);
+        setStudents(prev => [...prev, newStudent]);
+        setFilteredStudents(prev => [...prev, newStudent]);
+      } else {
+        fetchStudents();
+      }
     } catch (err) {
       console.error('Submit error:', err);
       setFormError(err.message || 'An error occurred');
@@ -553,6 +571,7 @@ const StudentManagement = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">Student Management</h1>
+          {permissions?.write && (
           <button
             onClick={openAddModal}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
@@ -560,7 +579,16 @@ const StudentManagement = () => {
             <FiPlus className="mr-2" />
             Add Student
           </button>
+          )}
         </div>
+
+        {/* Write Only Disclaimer */}
+        {!permissions?.read && permissions?.write && (
+          <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 rounded-md">
+            <p className="font-bold">Write Only Access</p>
+            <p>You can only add new entries. You cannot view existing entries except for the ones you just added. Refreshing the page will clear the list.</p>
+          </div>
+        )}
         
         {/* Search and Filter Section */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
@@ -666,20 +694,24 @@ const StudentManagement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => openEditModal(student, e)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                            title="Edit"
-                          >
-                            <FiEdit2 size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteClick(student, e)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
-                            title="Delete"
-                          >
-                            <FiTrash2 size={18} />
-                          </button>
+                          {permissions?.write && (
+                            <>
+                              <button
+                                onClick={(e) => openEditModal(student, e)}
+                                className="text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Edit"
+                              >
+                                <FiEdit2 size={18} />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteClick(student, e)}
+                                className="text-red-600 hover:text-red-800 transition-colors"
+                                title="Delete"
+                              >
+                                <FiTrash2 size={18} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -922,6 +954,11 @@ const StudentManagement = () => {
                     <input type="tel" name="contact" value={formData.contact} onChange={handleInputChange} maxLength="10" className="w-full px-4 py-2 border border-gray-300 rounded-lg" required={!formData.isOrphan} />
                   </div>
 
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">Home Address</label>
+                    <textarea name="homeAddress" value={formData.homeAddress} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" rows="2" required maxLength="200"></textarea>
+                  </div>
+
                   <div>
                     <label className="flex items-center space-x-2 mt-6">
                       <input type="checkbox" name="isOrphan" checked={formData.isOrphan} onChange={handleInputChange} className="rounded border-gray-300 text-blue-600" />
@@ -963,6 +1000,10 @@ const StudentManagement = () => {
                             <option key={i + 1} value={getOrdinal(i + 1)}>{getOrdinal(i + 1)}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">School Address</label>
+                        <textarea name="schoolAddress" value={formData.schoolAddress} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" rows="2" required></textarea>
                       </div>
                     </>
                   )}

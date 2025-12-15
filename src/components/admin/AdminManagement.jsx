@@ -5,8 +5,17 @@ import { useNavigate } from 'react-router-dom';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 import Popover from '../common/Popover';
+import { usePermissions } from '../../hooks/usePermissions';
+import { NoAccessSection } from '../common/PermissionGuard';
+import WriteOnlyDisclaimerModal from '../common/WriteOnlyDisclaimerModal';
+import { useWriteOnly } from '../../context/WriteOnlyContext';
 
 const AdminManagement = () => {
+  // Permission checks
+  const permUI = usePermissions('admins');
+  const { getTemporaryEntries, addTemporaryEntry, initializeWriteOnly, hasDisclaimerBeenShown, markDisclaimerShown } = useWriteOnly();
+  
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [activeTab, setActiveTab] = useState('admins'); // 'admins' or 'activities'
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,6 +46,17 @@ const AdminManagement = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
+
+  // Initialize write-only mode on component mount if applicable
+  useEffect(() => {
+    if (permUI.isWriteOnly) {
+      initializeWriteOnly('admins');
+      // Show disclaimer on first visit
+      if (!hasDisclaimerBeenShown('admins')) {
+        setShowDisclaimerModal(true);
+      }
+    }
+  }, [permUI.isWriteOnly, initializeWriteOnly, hasDisclaimerBeenShown]);
 
   // Fetch activities function
   const fetchActivities = async () => {
@@ -141,6 +161,36 @@ const AdminManagement = () => {
       setShowErrorPopover(true);
       setIsLoading(false);
       return;
+    }
+
+    // If write-only mode, add to temporary entries instead of API call
+    if (permUI.isWriteOnly && !editingAdmin) {
+      try {
+        const tempEntry = {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim()
+        };
+        addTemporaryEntry('admins', tempEntry);
+        
+        // Show success message via popover
+        setSuccessMessage('Admin added to your local list. It will be cleared when you refresh the page.');
+        setShowSuccessPopover(true);
+        
+        // Close the form popover
+        setShowFormPopover(false);
+        
+        // Clear form
+        setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        console.error('Error adding temporary entry:', err);
+        setErrorMessage('Failed to add admin to local list');
+        setShowErrorPopover(true);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
@@ -296,11 +346,27 @@ const AdminManagement = () => {
     currentPage * itemsPerPage
   );
 
+  // Check if user has access
+  if (permUI.hasNoAccess) {
+    return <NoAccessSection section="Admin Management" />;
+  }
+
   return (
     <div className="p-6">
+      {/* Write-Only Disclaimer Modal */}
+      <WriteOnlyDisclaimerModal
+        isOpen={showDisclaimerModal}
+        onClose={() => setShowDisclaimerModal(false)}
+        onAccept={() => {
+          markDisclaimerShown('admins');
+          setShowDisclaimerModal(false);
+        }}
+      />
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary-700">Admin Management</h1>
-        {activeTab === 'admins' && (
+        {/* Hide create button if read-only mode */}
+        {permUI.canWrite && activeTab === 'admins' && (
           <button
             onClick={handleAddClick}
             className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
@@ -342,18 +408,31 @@ const AdminManagement = () => {
       {/* Admins Tab Content */}
       {activeTab === 'admins' && (
         <>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-            <div className="relative w-full md:w-1/2">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search admins by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+          {/* Show message if write-only mode */}
+          {permUI.isWriteOnly && (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-blue-800 text-sm">
+                <strong>Write-Only Mode:</strong> You can only see admins you create below. Existing admins are hidden due to your access level.
+              </p>
             </div>
-          </div>
+          )}
+
+          {/* Only show search if not in write-only mode or if there are temporary entries */}
+          {!permUI.isWriteOnly && (
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+              <div className="relative w-full md:w-1/2">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search admins by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -365,7 +444,44 @@ const AdminManagement = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
+                {permUI.isWriteOnly ? (
+                  // Write-only mode: show temporary entries
+                  (() => {
+                    const tempEntries = getTemporaryEntries('admins');
+                    return tempEntries.length === 0 ? (
+                      <tr><td colSpan={4} className="text-center py-8 text-gray-500">No entries created yet. Add a new admin using the form above.</td></tr>
+                    ) : tempEntries.map((entry) => (
+                      <tr key={entry._tempId} className="hover:bg-yellow-50 bg-yellow-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-yellow-600 to-orange-600 flex items-center justify-center text-white text-lg font-bold">
+                              {entry.name?.charAt(0)?.toUpperCase() || <FiUser />}
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{entry.name}</div>
+                              <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">Temporary</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <FiMail className="mr-2 text-primary-600" />
+                            {entry.email}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <FiPhone className="mr-2 text-primary-600" />
+                            {entry.phone || 'Not provided'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <span className="text-gray-400 text-xs">No actions for temp entries</span>
+                        </td>
+                      </tr>
+                    ));
+                  })()
+                ) : loading ? (
                   <tr><td colSpan={4} className="text-center py-8">Loading...</td></tr>
                 ) : fetchError ? (
                   <tr><td colSpan={4} className="text-center text-red-500 py-8">Error loading admins: {fetchError}</td></tr>
@@ -396,20 +512,24 @@ const AdminManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEditClick(admin)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit"
-                      >
-                        <FiEdit2 className="inline-block" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(admin)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
-                      >
-                        <FiTrash2 className="inline-block" />
-                      </button>
+                      {permUI.canWrite && (
+                        <>
+                          <button
+                            onClick={() => handleEditClick(admin)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Edit"
+                          >
+                            <FiEdit2 className="inline-block" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(admin)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete"
+                          >
+                            <FiTrash2 className="inline-block" />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
