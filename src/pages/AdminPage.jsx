@@ -51,6 +51,8 @@ const AdminPage = () => {
           name: data.name,
           email: data.email,
           role: data.role,
+          superAdmin: data.superAdmin,
+          permissions: data.permissions,
           token: data.token
         }));
       // Store token separately for legacy components
