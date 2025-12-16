@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import useGet from '../CustomHooks/useGet';
+import { hasWritePermission } from '../../utils/permissions';
 
 const SubjectManagement = () => {
   // State management
@@ -319,13 +320,15 @@ const SubjectManagement = () => {
             <p className="text-gray-600">Manage subjects, students, and tutors</p>
           </div>
         </div>
-        <button
-          onClick={() => openModal('create')}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-        >
-          <FiPlus className="mr-2" />
-          Add Subject
-        </button>
+        {hasWritePermission('subjects') && (
+          <button
+            onClick={() => openModal('create')}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
+          >
+            <FiPlus className="mr-2" />
+            Add Subject
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -409,34 +412,38 @@ const SubjectManagement = () => {
                         >
                           <FiEye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => openModal('edit', subject)}
-                          className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-lg transition-colors"
-                          title="Edit Subject"
-                        >
-                          <FiEdit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal('add-students', subject)}
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                          title="Add Students"
-                        >
-                          <FiUsers className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal('add-tutors', subject)}
-                          className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
-                          title="Add Tutors"
-                        >
-                          <FiUserCheck className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(subject._id)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Delete Subject"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
+                        {hasWritePermission('subjects') && (
+                          <>
+                            <button
+                              onClick={() => openModal('edit', subject)}
+                              className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-lg transition-colors"
+                              title="Edit Subject"
+                            >
+                              <FiEdit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openModal('add-students', subject)}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Add Students"
+                            >
+                              <FiUsers className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openModal('add-tutors', subject)}
+                              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                              title="Add Tutors"
+                            >
+                              <FiUserCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(subject._id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete Subject"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

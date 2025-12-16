@@ -42,7 +42,23 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
     navigate('/admin');
   };
 
-  const tabs = [
+  // Map tab IDs to permission keys
+  const tabPermissionMap = {
+    'overview': 'dashboard',
+    'tutors': 'tutors',
+    'hadiya': 'hadiya',
+    'centers': 'centers',
+    'students': 'students',
+    'student-reports': 'students',
+    'attendance-control': 'tutorAttendance',
+    'guest-tutors': 'guestTutors',
+    'announcements': 'announcements',
+    'admins': 'admins',
+    'supervisors': 'supervisors',
+    'subject-management': 'subjects'
+  };
+
+  const allTabs = [
     { id: 'overview', label: 'Dashboard', icon: FiHome },
     { id: 'tutors', label: 'Tutors', icon: FiUsers },
     { id: 'hadiya', label: 'Hadiya', icon: FiDollarSign },
@@ -57,6 +73,16 @@ const Sidebar = ({ activeTab, onTabChange, className }) => {
     { id: 'supervisors', label: 'Supervisors', icon: FiUserCheck }, // New tab added
     { id: 'subject-management', label: 'Subject Management', icon: FiBook } // New tab for SubjectManagement
   ];
+
+  // Filter tabs based on permissions
+  const tabs = allTabs.filter(tab => {
+    const permissionKey = tabPermissionMap[tab.id];
+    if (!permissionKey || !adminProfile?.permissions) return false;
+    
+    const permission = adminProfile.permissions[permissionKey];
+    // Show tab if either read or write permission is true
+    return permission && (permission.read === true || permission.write === true);
+  });
 
   if (isLoading) {
     return (

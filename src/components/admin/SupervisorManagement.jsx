@@ -4,6 +4,7 @@ import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, Fi
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 import Popover from '../common/Popover';
+import { hasWritePermission } from '../../utils/permissions';
 
 const SupervisorManagement = () => {
   console.log('SupervisorManagement component mounted');
@@ -258,14 +259,16 @@ const SupervisorManagement = () => {
     <div className="p-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary-700">Supervisor Management</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={handleAddClick}
-            className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            <FiPlus className="mr-2" /> Add New Supervisor
-          </button>
-        </div>
+        {hasWritePermission('supervisors') && (
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddClick}
+              className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              <FiPlus className="mr-2" /> Add New Supervisor
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
         <div className="relative w-full md:w-1/2">
@@ -322,20 +325,24 @@ const SupervisorManagement = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button
-                    onClick={() => handleEditClick(supervisor)}
-                    className="text-blue-600 hover:text-blue-900"
-                    title="Edit"
-                  >
-                    <FiEdit2 className="inline-block" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(supervisor)}
-                    className="text-red-600 hover:text-red-900"
-                    title="Delete"
-                  >
-                    <FiTrash2 className="inline-block" />
-                  </button>
+                  {hasWritePermission('supervisors') && (
+                    <>
+                      <button
+                        onClick={() => handleEditClick(supervisor)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Edit"
+                      >
+                        <FiEdit2 className="inline-block" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(supervisor)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <FiTrash2 className="inline-block" />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

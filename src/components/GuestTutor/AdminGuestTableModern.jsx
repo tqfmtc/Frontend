@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiCheck, FiSearch, FiX, FiInfo } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { hasWritePermission } from '../../utils/permissions';
 
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
@@ -218,7 +219,7 @@ console.log(paginated)
                     </span>
                   </td>
                   <td className="px-4 py-3 space-x-2">
-                    {req.status === 'pending' && (
+                    {req.status === 'pending' && hasWritePermission('guestTutors') && (
                       <button
                         onClick={e => {
                           e.stopPropagation();
