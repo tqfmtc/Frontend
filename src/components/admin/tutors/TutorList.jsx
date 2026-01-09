@@ -4,6 +4,16 @@ import React, { useState, useEffect } from 'react';
 import Popover from '../../common/Popover';
 import { hasWritePermission } from '../../../utils/permissions';
 
+// Helper function to format date as dd/mm/yyyy
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
   // All state hooks at the top
   const [tutors, setTutors] = useState([]);
@@ -369,7 +379,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
-                  {tutor.joiningDate ? new Date(tutor.joiningDate).toLocaleDateString() : 'N/A'}
+                  {formatDate(tutor.joiningDate)}
                 </div>
               </div>
 
@@ -535,7 +545,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                     ) : 'Not assigned'}
                   </td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
-                    {tutor.joiningDate ? new Date(tutor.joiningDate).toLocaleDateString() : 'N/A'}
+                    {formatDate(tutor.joiningDate)}
                   </td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>

@@ -8,6 +8,16 @@ import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+// Helper function to format date as dd/mm/yy
+const formatDateShort = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+};
+
 // Helper function to check if a date is Sunday
 const isSunday = (date) => {
   return new Date(date).getDay() === 0;
@@ -56,6 +66,11 @@ const ReportManagement = () => {
   const leafletRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(15);
+  
+  // Holiday Modal State
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [holidayDates, setHolidayDates] = useState('');
+  const [hasHolidays, setHasHolidays] = useState(null); // null = asking, true = entering dates, false = no holidays
 
   const { response: centers } = useGet('/centers');
   const { response: attendanceReport, loading, error: reportError } = useGet(
@@ -223,7 +238,7 @@ const ReportManagement = () => {
             fillColor: '#3b82f6',
             fillOpacity: 0.7,
           }).addTo(map);
-          marker.bindPopup(`${p.date} ${p.time}`);
+          marker.bindPopup(`${formatDateShort(p.date)} ${p.time}`);
           markers.push(marker);
         });
 
@@ -286,7 +301,30 @@ const ReportManagement = () => {
     }
   };
 
-  const handleDownloadCSV = () => {
+  // Helper function to parse dd/mm/yy date format to yyyy-MM-dd
+  const parseHolidayDate = (dateStr) => {
+    const parts = dateStr.trim().split('/');
+    if (parts.length !== 3) return null;
+    const [day, month, year] = parts;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const paddedMonth = month.padStart(2, '0');
+    const paddedDay = day.padStart(2, '0');
+    return `${fullYear}-${paddedMonth}-${paddedDay}`;
+  };
+
+  // Open holiday modal when export button is clicked
+  const handleExportClick = () => {
+    if (!filteredReports || filteredReports.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+    setShowHolidayModal(true);
+    setHasHolidays(null);
+    setHolidayDates('');
+  };
+
+  // Handle the actual CSV download with optional holidays
+  const handleDownloadCSV = (holidayDatesArray = []) => {
     // Use filtered reports instead of all reports
     if (!filteredReports || filteredReports.length === 0) {
       toast.error('No data to export');
@@ -318,7 +356,8 @@ const ReportManagement = () => {
     
     // Create rows for each tutor (using filteredReports)
     const rows = filteredReports.map(report => {
-      // Count marked present days (excluding Sundays)
+      // Count marked present days (excluding Sundays only)
+      // Don't exclude holidays here - we handle holiday logic separately below
       const markedPresentDays = Object.entries(report.attendance || {})
         .filter(([date, present]) => present && !isSunday(new Date(date)))
         .length;
@@ -350,8 +389,22 @@ const ReportManagement = () => {
         currentDate.setDate(currentDate.getDate() + 1);
       }
       
-      // Total present = marked + Sundays
-      const totalPresentDays = markedPresentDays + sundayCount;
+      // Count holidays in the range that make previously absent days present
+      // Only count holidays where the tutor was absent (to avoid double-counting)
+      let holidayPresentCount = 0;
+      holidayDatesArray.forEach(hDate => {
+        const holidayDateObj = new Date(hDate);
+        const rangeStart = new Date(fromYear, fromMonth - 1, 1);
+        const rangeEnd = new Date(actualEndYear, actualEndMonth, 0);
+        if (holidayDateObj >= rangeStart && holidayDateObj <= rangeEnd && !isSunday(holidayDateObj)) {
+          // If tutor was absent on this holiday, count it as an additional present day
+          if (!report.attendance?.[hDate]) {
+            holidayPresentCount++;
+          }
+        }
+      });
+      
+      const totalPresentDays = markedPresentDays + sundayCount + holidayPresentCount;
       const absentDays = totalDays - totalPresentDays;
       const attendancePercentage = totalDays > 0 ? Math.round((totalPresentDays / totalDays) * 100) : 0;
       
@@ -368,6 +421,9 @@ const ReportManagement = () => {
         // If it's a Sunday, mark as Present automatically
         if (isSunday(dayDate)) {
           row.push('Present (Sunday)');
+        } else if (holidayDatesArray.includes(day)) {
+          // If it's a holiday, mark as Present (Holiday)
+          row.push('Present (Holiday)');
         } else {
           const status = report.attendance?.[day];
           row.push(status ? 'Present' : 'Absent');
@@ -395,7 +451,47 @@ const ReportManagement = () => {
     link.click();
     document.body.removeChild(link);
     
-    toast.success(`Exported ${filteredReports.length} tutor(s) successfully!`);
+    const holidayMsg = holidayDatesArray.length > 0 ? ` (with ${holidayDatesArray.length} holiday(s))` : '';
+    toast.success(`Exported ${filteredReports.length} tutor(s) successfully!${holidayMsg}`);
+  };
+
+  // Handle holiday modal confirmation
+  const handleHolidayConfirm = () => {
+    if (hasHolidays === false) {
+      // No holidays, download directly
+      handleDownloadCSV([]);
+      setShowHolidayModal(false);
+      return;
+    }
+    
+    if (hasHolidays === true) {
+      // Parse holiday dates
+      const dateStrings = holidayDates.split(',').map(d => d.trim()).filter(d => d);
+      const parsedDates = [];
+      const invalidDates = [];
+      
+      dateStrings.forEach(dateStr => {
+        const parsed = parseHolidayDate(dateStr);
+        if (parsed) {
+          parsedDates.push(parsed);
+        } else {
+          invalidDates.push(dateStr);
+        }
+      });
+      
+      if (invalidDates.length > 0) {
+        toast.error(`Invalid date format: ${invalidDates.join(', ')}. Use dd/mm/yy format.`);
+        return;
+      }
+      
+      if (parsedDates.length === 0) {
+        toast.error('Please enter at least one holiday date.');
+        return;
+      }
+      
+      handleDownloadCSV(parsedDates);
+      setShowHolidayModal(false);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -599,7 +695,7 @@ const ReportManagement = () => {
         </h1>
         <div className="flex gap-4">
           <button
-            onClick={handleDownloadCSV}
+            onClick={handleExportClick}
             disabled={isLoading}
             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
           >
@@ -911,7 +1007,7 @@ const ReportManagement = () => {
                 <ul className="divide-y">
                   {mapPoints.map((p, idx) => (
                     <li key={idx} className="py-2 text-sm">
-                      <div className="font-medium">{p.date} {p.time}</div>
+                      <div className="font-medium">{formatDateShort(p.date)} {p.time}</div>
                       <div className="text-gray-600">Lat: {p.lat.toFixed(6)}, Lng: {p.lng.toFixed(6)}</div>
                     </li>
                   ))}
@@ -920,6 +1016,101 @@ const ReportManagement = () => {
                   )}
                 </ul>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Holiday Modal */}
+      {showHolidayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl w-11/12 md:w-1/2 lg:w-1/3 max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-800">Export Attendance Report</h2>
+              <button 
+                onClick={() => setShowHolidayModal(false)} 
+                className="p-2 rounded hover:bg-gray-100 transition-colors"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5">
+              {hasHolidays === null && (
+                <div className="space-y-4">
+                  <p className="text-gray-600">Were there any holidays during this period?</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setHasHolidays(true)}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      Yes, there were holidays
+                    </button>
+                    <button
+                      onClick={() => setHasHolidays(false)}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      No holidays
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {hasHolidays === true && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Enter holiday dates (dd/mm/yy format)
+                    </label>
+                    <textarea
+                      value={holidayDates}
+                      onChange={(e) => setHolidayDates(e.target.value)}
+                      placeholder="e.g., 25/12/24, 01/01/25, 26/01/25"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                      rows={3}
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      Separate multiple dates with commas. These dates will be marked as "Present (Holiday)" for all tutors.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setHasHolidays(null)}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleHolidayConfirm}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-medium flex items-center justify-center"
+                    >
+                      <FiDownload className="mr-2" />
+                      Download Report
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {hasHolidays === false && (
+                <div className="space-y-4">
+                  <p className="text-gray-600">Ready to download the report without any holiday adjustments.</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setHasHolidays(null)}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleHolidayConfirm}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-medium flex items-center justify-center"
+                    >
+                      <FiDownload className="mr-2" />
+                      Download Report
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

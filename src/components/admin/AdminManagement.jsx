@@ -393,7 +393,7 @@ const AdminManagement = () => {
             onClick={handleAddClick}
             className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
-            <FiPlus className="mr-2" /> Add New Admin
+            <FiPlus className="mr-2" /> Add New User
           </button>
         )}
       </div>
@@ -411,7 +411,7 @@ const AdminManagement = () => {
               }`}
             >
               <FiUser className="inline mr-2" />
-              Admins
+              Users
             </button>
             <button
               onClick={() => setActiveTab('activities')}
@@ -447,7 +447,7 @@ const AdminManagement = () => {
           <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r-lg">
             <p className="text-sm text-blue-800">
               <FiInfo className="inline mr-2" />
-              <strong>Tip:</strong> Click on any admin (except super admins) to view their permissions. You can also edit permissions from there.
+              <strong>Tip:</strong> Click on any user (except super admins) to view their permissions. You can also edit permissions from there.
             </p>
           </div>
 
@@ -638,7 +638,7 @@ const AdminManagement = () => {
                           Super Admin
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-600">Admin</span>
+                        <span className="text-sm text-gray-600">User</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2" onClick={(e) => e.stopPropagation()}>

@@ -1077,7 +1077,8 @@ const StudentReports = () => {
           )}
         </AnimatePresence>
       </div>
-    </div>
+      </div>
+    
   );
 };
 

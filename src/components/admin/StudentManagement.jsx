@@ -131,6 +131,7 @@ const StudentManagement = () => {
   const [selectedTutor, setSelectedTutor] = useState('');
   const [centers, setCenters] = useState([]);
   const [tutors, setTutors] = useState([]); // All tutors
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -171,7 +172,8 @@ const StudentManagement = () => {
     assignedTutor: '',
     remarks: '',
     homeAddress: '',
-    schoolAddress: ''
+    schoolAddress: '',
+    subjects: []
   });
   const [centerTutors, setCenterTutors] = useState([]);
   const [loadingCenterTutors, setLoadingCenterTutors] = useState(false);
@@ -205,6 +207,7 @@ const StudentManagement = () => {
     fetchStudents();
     fetchCenters();
     fetchTutors();
+    fetchSubjects();
   }, []);
 
   const fetchStudents = async () => {
@@ -246,6 +249,19 @@ const StudentManagement = () => {
       setTutors(data);
     } catch (err) {
       console.error('Failed to fetch tutors');
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const token = getToken();
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setSubjects(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch subjects');
     }
   };
 
@@ -348,7 +364,8 @@ const StudentManagement = () => {
       assignedTutor: '',
       remarks: '',
       homeAddress: '',
-      schoolAddress: ''
+      schoolAddress: '',
+      subjects: []
     });
     setCenterTutors([]);
     setIsEditing(false);
@@ -359,6 +376,17 @@ const StudentManagement = () => {
   const openEditModal = (student, e) => {
     e.stopPropagation();
     const centerId = student.assignedCenter?._id || student.assignedCenter || '';
+    
+    // Extract subject IDs from student.subjects array (StudentSubject records)
+    const subjectIds = student.subjects?.map(subj => {
+      // Handle both populated and unpopulated cases
+      if (subj.subject && subj.subject._id) {
+        return subj.subject._id;
+      } else if (subj.subject) {
+        return subj.subject;
+      }
+      return null;
+    }).filter(Boolean) || [];
     
     setFormData({
       _id: student._id,
@@ -378,7 +406,8 @@ const StudentManagement = () => {
       assignedTutor: student.assignedTutor?._id || student.assignedTutor || '',
       remarks: student.remarks || '',
       homeAddress: student.homeAddress || '',
-      schoolAddress: student.schoolAddress || ''
+      schoolAddress: student.schoolAddress || '',
+      subjects: subjectIds
     });
     
     if (centerId) {
@@ -428,7 +457,8 @@ const StudentManagement = () => {
         assignedTutor: formData.assignedTutor || null,
         remarks: formData.remarks.trim(),
         homeAddress: formData.homeAddress.trim(),
-        schoolAddress: formData.schoolAddress.trim()
+        schoolAddress: formData.schoolAddress.trim(),
+        subjects: formData.subjects || []
       };
 
       if (formData.isOrphan) {
@@ -1067,6 +1097,25 @@ const StudentManagement = () => {
                 </div>
               </div>
 
+              {/* Subjects Section */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assigned Subjects</h3>
+                {selectedStudent.subjects && selectedStudent.subjects.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.subjects.map((subj, idx) => {
+                      const subjectName = subj.subject?.subjectName || subj.subject?.name || 'Unknown Subject';
+                      return (
+                        <span key={idx} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          {subjectName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No subjects assigned</p>
+                )}
+              </div>
+
               {/* Student Marks Section */}
               <div className="border-t pt-6">
                 <h3 className="text-xl font-bold mb-4">Academic Performance</h3>
@@ -1273,6 +1322,42 @@ const StudentManagement = () => {
                   </div>
                 </div>
 
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Subjects
+                  </label>
+                  {subjects.filter(s => s.isActive !== false).length === 0 ? (
+                    <div className="text-sm text-gray-500">No active subjects available</div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {subjects.filter(s => s.isActive !== false).map(subject => (
+                        <label key={subject._id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.subjects.includes(subject._id)}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setFormData(prev => ({
+                                ...prev,
+                                subjects: isChecked
+                                  ? [...prev.subjects, subject._id]
+                                  : prev.subjects.filter(id => id !== subject._id)
+                              }));
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{subject.subjectName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {formData.subjects.length > 0 && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Selected: {formData.subjects.length} of {subjects.filter(s => s.isActive !== false).length} active subject{subjects.filter(s => s.isActive !== false).length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
                   <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} rows="3" className="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
@@ -1336,78 +1421,133 @@ const StudentManagement = () => {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg"
+              className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
                     Change Assigned Center
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-base text-gray-700 mt-2">
                     Student: <span className="font-semibold">{studentToChangeCenter.name}</span>
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Current Center: {studentToChangeCenter.assignedCenter?.name || 'None'}
-                  </p>
+                  <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full">
+                    <FiMapPin className="text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">
+                      Current: {studentToChangeCenter.assignedCenter?.name || 'None'}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowChangeCenterModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  <FiX size={20} />
+                  <FiX size={24} />
                 </button>
               </div>
 
               <form onSubmit={handleChangeCenterSubmit} className="space-y-6">
                 {/* Center Selection with Search */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 after:content-['*'] after:ml-0.5 after:text-red-500">
-                    New Assigned Center
+                  <label className="block text-base font-semibold text-gray-800 mb-3 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    Select New Center
                   </label>
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search centers..."
-                        value={centerSearchQuery}
-                        onChange={(e) => setCenterSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-                    <select
-                      name="newCenterId"
-                      value={changeCenterData.newCenterId}
-                      onChange={handleCenterChangeInput}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      size="5"
-                      required
-                    >
-                      <option value="" disabled>
-                        {filteredCentersForChange.length === 0 ? 'No centers found' : 'Select a center'}
-                      </option>
-                      {filteredCentersForChange.map(center => (
-                        <option key={center._id} value={center._id}>
-                          {center.name} {center.area ? `(${center.area})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500">
-                      Showing {filteredCentersForChange.length} of {centers.length} centers
-                    </p>
+                  <div className="relative mb-3">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search centers by name or area..."
+                      value={centerSearchQuery}
+                      onChange={(e) => setCenterSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base"
+                    />
                   </div>
+                  
+                  <div className="border-2 border-gray-300 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+                    {filteredCentersForChange.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500">
+                        <FiMapPin className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                        <p className="text-lg">No centers found</p>
+                        <p className="text-sm mt-1">Try adjusting your search</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200">
+                        {filteredCentersForChange.map(center => {
+                          const isCurrentCenter = center._id === (studentToChangeCenter.assignedCenter?._id || studentToChangeCenter.assignedCenter);
+                          const isSelected = changeCenterData.newCenterId === center._id;
+                          
+                          return (
+                            <div
+                              key={center._id}
+                              onClick={() => !isCurrentCenter && handleCenterChangeInput({ target: { name: 'newCenterId', value: center._id } })}
+                              className={`p-4 cursor-pointer transition-all ${
+                                isCurrentCenter
+                                  ? 'bg-blue-50 cursor-not-allowed opacity-60'
+                                  : isSelected
+                                  ? 'bg-green-50 border-l-4 border-green-600'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-lg font-semibold text-gray-900">
+                                      {center.name}
+                                    </h4>
+                                    {isCurrentCenter && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        Current
+                                      </span>
+                                    )}
+                                    {isSelected && !isCurrentCenter && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        Selected
+                                      </span>
+                                    )}
+                                  </div>
+                                  {center.area && (
+                                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                                      <FiMapPin className="h-3 w-3" />
+                                      {center.area}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                  isCurrentCenter
+                                    ? 'border-blue-400 bg-blue-100'
+                                    : isSelected
+                                    ? 'border-green-600 bg-green-600'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {isSelected && !isCurrentCenter && (
+                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+                                      <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing {filteredCentersForChange.length} of {centers.length} centers
+                  </p>
                 </div>
 
                 {/* Tutor Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 after:content-['*'] after:ml-0.5 after:text-red-500">
-                    New Assigned Tutor
+                  <label className="block text-base font-semibold text-gray-800 mb-3 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    Select New Tutor
                   </label>
                   <select
                     name="newTutorId"
                     value={changeCenterData.newTutorId}
                     onChange={handleCenterChangeInput}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base"
                     disabled={!changeCenterData.newCenterId || loadingChangeCenterTutors}
                     required
                   >
@@ -1427,47 +1567,47 @@ const StudentManagement = () => {
                     ))}
                   </select>
                   {loadingChangeCenterTutors && (
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-green-500"></div>
+                    <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500"></div>
                       Loading tutors for selected center...
                     </p>
                   )}
                   {!loadingChangeCenterTutors && changeCenterData.newCenterId && changeCenterTutors.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className="text-sm text-amber-700 mt-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
                       ⚠️ No tutors found in this center. You may need to assign tutors to this center first.
                     </p>
                   )}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs text-blue-800">
-                    <strong>Note:</strong> Changing the center will update both the assigned center and tutor for this student. The selected tutor must belong to the chosen center.
+                <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
+                  <p className="text-sm text-blue-900">
+                    <strong className="font-semibold">Note:</strong> Changing the center will update both the assigned center and tutor for this student. The selected tutor must belong to the chosen center.
                   </p>
                 </div>
 
-                <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-200">
                   <button
                     type="button"
                     onClick={() => setShowChangeCenterModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-6 py-3 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
                     disabled={isChangingCenter}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
+                    className="px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2 shadow-lg"
                     disabled={isChangingCenter || !changeCenterData.newCenterId || !changeCenterData.newTutorId}
                   >
                     {isChangingCenter ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
                         Updating...
                       </>
                     ) : (
                       <>
-                        <FiMapPin />
-                        Change Center
+                        <FiMapPin className="h-5 w-5" />
+                        Change Center & Tutor
                       </>
                     )}
                   </button>
