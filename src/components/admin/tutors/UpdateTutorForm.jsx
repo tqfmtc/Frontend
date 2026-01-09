@@ -147,10 +147,10 @@ const UpdateTutorForm = ({
       ? formData.students.map((s) => (typeof s === 'object' ? (s._id || s.id) : s))
       : (formData.students ? [formData.students] : []);
 
-    // joiningDate format
+    // joiningDate format - convert from yyyy-mm-dd to dd/mm/yy for display
     if (formData.joiningDate) {
       try {
-        processed.joiningDate = new Date(formData.joiningDate).toISOString().split('T')[0];
+        processed.joiningDate = formatDateForDisplay(formData.joiningDate);
       } catch (e) {
         processed.joiningDate = '';
       }
@@ -505,6 +505,11 @@ const UpdateTutorForm = ({
     payload.subjects = Array.isArray(payload.subjects) ? payload.subjects : (payload.subjects ? [payload.subjects] : []);
     payload.students = Array.isArray(payload.students) ? payload.students : (payload.students ? [payload.students] : []);
 
+    // Convert joiningDate from dd/mm/yy to yyyy-mm-dd
+    if (payload.joiningDate) {
+      payload.joiningDate = formatDateForStorage(payload.joiningDate);
+    }
+
     // Remove empty strings
     Object.keys(payload).forEach((k) => {
       if (typeof payload[k] === 'string' && !payload[k].trim()) delete payload[k];
@@ -671,16 +676,47 @@ const UpdateTutorForm = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Joining Date <span className="text-gray-500">(Optional)</span>
                   </label>
-                  <input
-                    type="date"
-                    value={localForm.joiningDate || ''}
-                    onChange={handleInputChange}
-                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                    name="joiningDate"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={localForm.joiningDate || ''}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/[^0-9/]/g, '');
+                        if (value.length === 2 && !value.includes('/')) value += '/';
+                        if (value.length === 5 && value.split('/').length === 2) value += '/';
+                        if (value.length > 8) value = value.slice(0, 8);
+                        handleInputChange({ target: { name: 'joiningDate', value } });
+                      }}
+                      name="joiningDate"
+                      placeholder="DD/MM/YY"
+                      maxLength="8"
+                      className="w-full px-3 py-1.5 pr-10 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                    <input
+                      type="date"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const formatted = formatDateForDisplay(e.target.value);
+                          handleInputChange({ target: { name: 'joiningDate', value: formatted } });
+                        }
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer"
+                      style={{ width: '32px', height: '32px' }}
+                    />
+                    <svg
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                  </div>
                   <div className="text-xs text-red-500 mt-1">
-                    Defaults to today if left blank
+                    Format: DD/MM/YY. Defaults to today if left blank
                   </div>
                 </div>
               </div>

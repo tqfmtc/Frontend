@@ -11,7 +11,9 @@ const Popover = ({
   type = 'info', // 'info', 'success', 'warning', 'error', 'confirm'
   onConfirm = null,
   confirmText = 'Confirm',
-  cancelText = 'Cancel'
+  cancelText = 'Cancel',
+  size = 'md', // 'sm', 'md', 'lg', 'xl'
+  hideFooter = false
 }) => {
   // Close popover when pressing Escape
   useEffect(() => {
@@ -40,6 +42,17 @@ const Popover = ({
     }
   };
 
+  // Get width based on size
+  const getWidth = () => {
+    switch (size) {
+      case 'sm': return '300px';
+      case 'md': return '400px';
+      case 'lg': return '600px';
+      case 'xl': return '800px';
+      default: return '400px';
+    }
+  };
+
   // Style for the popover
   const popoverStyles = {
     overlay: {
@@ -59,7 +72,7 @@ const Popover = ({
       borderRadius: '8px',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       padding: '20px',
-      width: '350px',
+      width: getWidth(),
       maxWidth: '90%',
       maxHeight: '90vh',
       overflow: 'auto',
@@ -131,6 +144,7 @@ const Popover = ({
         <div style={popoverStyles.body}>
           <p style={popoverStyles.message}>{message}</p>
         </div>
+        {!hideFooter && (
         <div style={popoverStyles.footer}>
           {type === 'confirm' && (
             <button 
@@ -147,6 +161,7 @@ const Popover = ({
             {type === 'confirm' ? confirmText : 'OK'}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

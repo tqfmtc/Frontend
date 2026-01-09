@@ -35,7 +35,7 @@ const Navbar = () => {
     { name: 'Programs', path: 'programs' },
     { name: 'Impact', path: 'impact' },
     { name: 'Contact', path: 'contact' },
-    { name: 'Admin', path: '/admin', special: true },
+    { name: 'Admin', label: 'User', path: '/admin', special: true },
     { name: 'Tutor', path: '/tutor', special: true },
     {name: 'Supervisor', path: '/supervisor', special: true},
   ];
@@ -72,7 +72,7 @@ const Navbar = () => {
                     className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors text-gray-700 hover:text-primary-600 hover:bg-gray-50`}
                     onClick={closeMenu}
                   >
-                    {link.name}
+                    {link.label || link.name}
                   </ScrollLink>
                 ) : (
                   <RouterLink
@@ -81,7 +81,7 @@ const Navbar = () => {
                     className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-700 hover:text-primary-600 hover:bg-gray-50`}
                     onClick={closeMenu}
                   >
-                    {link.name}
+                    {link.label || link.name}
                   </RouterLink>
                 )
               ) : null
@@ -102,7 +102,7 @@ const Navbar = () => {
                   } ${isLoginPage ? 'shadow' : ''}`}
                   onClick={closeMenu}
                 >
-                  {link.name}
+                  {link.label || link.name}
                 </RouterLink>
               ))}
             </div>
@@ -142,7 +142,7 @@ const Navbar = () => {
                     className={`block px-3 py-2 text-base font-medium rounded-md cursor-pointer text-gray-700 hover:text-primary-600 hover:bg-gray-50`}
                     onClick={closeMenu}
                   >
-                    {link.name}
+                    {link.label || link.name}
                   </ScrollLink>
                 ) : (
                   <RouterLink
@@ -151,7 +151,7 @@ const Navbar = () => {
                     className={`block px-3 py-2 text-base font-medium rounded-md cursor-pointer text-gray-700 hover:text-primary-600 hover:bg-gray-50`}
                     onClick={closeMenu}
                   >
-                    {link.name}
+                    {link.label || link.name}
                   </RouterLink>
                 )
               ) : null
@@ -172,7 +172,7 @@ const Navbar = () => {
                 }`}
                 onClick={closeMenu}
               >
-                {link.name}
+                  {link.label || link.name}
               </RouterLink>
             ))}
           </div>

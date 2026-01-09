@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { motion } from 'framer-motion';
+import { hasWritePermission } from '../../utils/permissions';
 
 const AnnouncementManagement = () => {
   const emptyForm = { title: '', body: '', startDate: null, endDate: null, priority: 3 };
@@ -129,6 +130,7 @@ const AnnouncementManagement = () => {
           </div>
         </div>
       )}
+      {hasWritePermission('announcements') && (
       <form onSubmit={submit} className="space-y-4 max-w-xl border p-4 rounded shadow">
         <label className="block text-sm font-medium text-gray-700">Title</label>
         <input
@@ -208,13 +210,15 @@ const AnnouncementManagement = () => {
           {loading ? 'Saving...' : 'Publish'}
         </motion.button>
       </form>
+      )}
 
       <div className="mt-10">
         <h3 className="text-xl font-semibold mb-2">Existing Announcements</h3>
         <ul className="space-y-4">
           {announcements.map((a) => (
             <li key={a._id} className="border p-4 rounded shadow relative">
-              <div className="absolute right-2 top-2 flex gap-2 text-xs">
+              {hasWritePermission('announcements') && (
+                <div className="absolute right-2 top-2 flex gap-2 text-xs">
                 <button onClick={()=>{
                   setEditingId(a._id); setForm({
                     title:a.title,
@@ -243,6 +247,7 @@ const AnnouncementManagement = () => {
                   </div>
                 )}
               </div>
+              )}
               <p className="font-semibold">{a.title}</p>
               <p className="text-sm mb-1 whitespace-pre-wrap">{a.body}</p>
               <p className="text-xs text-gray-500">{formatDate(a.startDate)} to {formatDate(a.endDate)} | Priority: {a.priority}</p>

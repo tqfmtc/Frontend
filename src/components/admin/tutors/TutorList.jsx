@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 // Use VITE_API_URL for backend endpoint
 
 import Popover from '../../common/Popover';
+import { hasWritePermission } from '../../../utils/permissions';
+
+// Helper function to format date as dd/mm/yyyy
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
   // All state hooks at the top
@@ -292,8 +303,179 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
         </div>
       </div>
       
-      {/* Tutors Table */}
-      <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredTutors.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+            {searchTerm ? 'No tutors match your search criteria' : 'No tutors found'}
+          </div>
+        ) : (
+          currentTutors.map((tutor) => (
+            <div 
+              key={tutor._id}
+              style={{
+                background: tutor.status === 'inactive' ? '#f3f4f6' : 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              {/* Header with name and status */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                    {tutor.name}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                    {tutor.assignedCenter ? tutor.assignedCenter.name : 'Not assigned'}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    padding: '4px 10px',
+                    background: tutor.status === 'active' ? '#d1fae5' : '#fee2e2',
+                    color: tutor.status === 'active' ? '#065f46' : '#991b1b',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textTransform: 'capitalize',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tutor.status}
+                </span>
+              </div>
+
+              {/* Contact Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                <a 
+                  href={`tel:${tutor.phone}`}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    fontSize: '14px'
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                  {tutor.phone}
+                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4b5563', fontSize: '14px' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  <span style={{ wordBreak: 'break-all' }}>{tutor.email}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4b5563', fontSize: '14px' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  {formatDate(tutor.joiningDate)}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={() => onProfile(tutor)}
+                  style={{ 
+                    flex: 1,
+                    minWidth: '80px',
+                    padding: '8px 12px', 
+                    background: '#f3f4f6', 
+                    color: '#1f2937', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontWeight: '500',
+                    fontSize: '14px'
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  View
+                </button>
+                {hasWritePermission('tutors') && (
+                  <>
+                    <button 
+                      onClick={() => onEdit(tutor)}
+                      style={{ 
+                        flex: 1,
+                        minWidth: '80px',
+                        padding: '8px 12px', 
+                        background: '#dbeafe', 
+                        color: '#1e40af', 
+                        border: 'none', 
+                        borderRadius: '8px', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        fontWeight: '500',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => tutor.status !== 'inactive' && confirmDeleteTutor(tutor)}
+                      disabled={tutor.status === 'inactive'}
+                      style={{ 
+                        flex: 1,
+                        minWidth: '80px',
+                        padding: '8px 12px', 
+                        background: tutor.status === 'inactive' ? '#e5e7eb' : '#fee2e2', 
+                        color: tutor.status === 'inactive' ? '#9ca3af' : '#b91c1c', 
+                        border: 'none', 
+                        borderRadius: '8px', 
+                        cursor: tutor.status === 'inactive' ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                        opacity: tutor.status === 'inactive' ? 0.7 : 1
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block" style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
         <table
           style={{
             width: '100%',
@@ -344,7 +526,9 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                   <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ fontWeight: '500', color: '#111827' }}>{tutor.name}</div>
                   </td>
-                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{tutor.phone}</td>
+                  <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
+                    <a href={`tel:${tutor.phone}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{tutor.phone}</a>
+                  </td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{tutor.email}</td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
                     {tutor.assignedCenter ? (
@@ -361,7 +545,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                     ) : 'Not assigned'}
                   </td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
-                    {tutor.joiningDate ? new Date(tutor.joiningDate).toLocaleDateString() : 'N/A'}
+                    {formatDate(tutor.joiningDate)}
                   </td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -388,57 +572,61 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                         </svg>
                         View
                       </button>
-                      <button 
-                        onClick={() => onEdit(tutor)}
-                        style={{ 
-                          padding: '4px 8px', 
-                          background: '#dbeafe', 
-                          color: '#1e40af', 
-                          border: 'none', 
-                          borderRadius: '6px', 
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => tutor.status !== 'inactive' && confirmDeleteTutor(tutor)}
-                        disabled={tutor.status === 'inactive'}
-                        style={{ 
-                          padding: '4px 8px', 
-                          background: tutor.status === 'inactive' ? '#e5e7eb' : '#fee2e2', 
-                          color: tutor.status === 'inactive' ? '#9ca3af' : '#b91c1c', 
-                          border: 'none', 
-                          borderRadius: '6px', 
-                          cursor: tutor.status === 'inactive' ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          transition: 'all 0.2s',
-                          opacity: tutor.status === 'inactive' ? 0.7 : 1
-                        }}
-                        title={tutor.status === 'inactive' ? 'Cannot delete an inactive tutor' : 'Delete tutor'}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          <line x1="10" y1="11" x2="10" y2="17"></line>
-                          <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                        Delete
-                      </button>
+                      {hasWritePermission('tutors') && (
+                        <>
+                          <button 
+                            onClick={() => onEdit(tutor)}
+                            style={{ 
+                              padding: '4px 8px', 
+                              background: '#dbeafe', 
+                              color: '#1e40af', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontWeight: '500',
+                              fontSize: '12px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => tutor.status !== 'inactive' && confirmDeleteTutor(tutor)}
+                            disabled={tutor.status === 'inactive'}
+                            style={{ 
+                              padding: '4px 8px', 
+                              background: tutor.status === 'inactive' ? '#e5e7eb' : '#fee2e2', 
+                              color: tutor.status === 'inactive' ? '#9ca3af' : '#b91c1c', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              cursor: tutor.status === 'inactive' ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontWeight: '500',
+                              fontSize: '12px',
+                              transition: 'all 0.2s',
+                              opacity: tutor.status === 'inactive' ? 0.7 : 1
+                            }}
+                            title={tutor.status === 'inactive' ? 'Cannot delete an inactive tutor' : 'Delete tutor'}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                   <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
