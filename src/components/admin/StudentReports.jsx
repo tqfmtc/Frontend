@@ -286,10 +286,18 @@ const StudentReports = () => {
         }
         rows.push([]);
 
-        // ✅ MARKS - FIXED to properly capture all marks data
+        // ✅ MARKS - FIXED to properly capture all marks data + Statistics
         rows.push(['MARKS RECORDS']);
         if (student.subjectMarks && student.subjectMarks.length > 0) {
           let anyMarks = false;
+          
+          // Calculate overall average first
+          const overallAvg = calculateOverallAverage(student.subjectMarks);
+          if (overallAvg !== null) {
+            rows.push(['OVERALL AVERAGE PERCENTAGE', `${overallAvg}%`]);
+            rows.push([]);
+          }
+          
           student.subjectMarks.forEach((subjectRecord, sIdx) => {
             const subjectName = subjectRecord.subject?.name || `Subject ${sIdx + 1}`;
             const list = subjectRecord.marksPercentage || [];
@@ -297,10 +305,17 @@ const StudentReports = () => {
             rows.push([subjectName]);
             if (list && list.length > 0) {
               anyMarks = true;
+              const stats = calculateSubjectStats(list);
+              
               rows.push(['Exam Date', 'Percentage']);
               list.forEach((mark) => {
                 rows.push([formatDate(mark.examDate), `${mark.percentage}%`]);
               });
+              rows.push([]);
+              rows.push(['Statistics', '']);
+              rows.push(['Lowest Mark', `${stats.min}%`]);
+              rows.push(['Highest Mark', `${stats.max}%`]);
+              rows.push(['Average Mark', `${stats.avg}%`]);
               rows.push([]);
             } else {
               rows.push(['No marks records for this subject']);
@@ -328,7 +343,7 @@ const StudentReports = () => {
               : avgMarks >= 50 ? 'C'
               : avgMarks >= 40 ? 'D'
               : 'F';
-            rows.push(['AVERAGE MARKS', `${avgMarks}%`]);
+            rows.push(['TOTAL AVERAGE MARKS (ALL SUBJECTS)', `${avgMarks}%`]);
             rows.push(['OVERALL GRADE', overallGrade]);
           }
         } else {
@@ -457,6 +472,34 @@ const StudentReports = () => {
     } catch {
       return dateStr;
     }
+  };
+
+  // Calculate subject statistics (min, max, average)
+  const calculateSubjectStats = (marksArray) => {
+    if (!marksArray || marksArray.length === 0) {
+      return { min: null, max: null, avg: null };
+    }
+    const percentages = marksArray.map(m => m.percentage);
+    const min = Math.min(...percentages);
+    const max = Math.max(...percentages);
+    const avg = (percentages.reduce((sum, p) => sum + p, 0) / percentages.length).toFixed(1);
+    return { min, max, avg: parseFloat(avg) };
+  };
+
+  // Calculate overall average across all subjects
+  const calculateOverallAverage = (subjectMarks) => {
+    if (!subjectMarks || subjectMarks.length === 0) return null;
+    let totalMarks = 0;
+    let totalCount = 0;
+    subjectMarks.forEach(subjectRecord => {
+      if (subjectRecord.marksPercentage && subjectRecord.marksPercentage.length > 0) {
+        subjectRecord.marksPercentage.forEach(mark => {
+          totalMarks += mark.percentage;
+          totalCount++;
+        });
+      }
+    });
+    return totalCount > 0 ? (totalMarks / totalCount).toFixed(1) : null;
   };
 
   return (
@@ -934,55 +977,90 @@ const StudentReports = () => {
 
                         {/* Marks */}
                         <div>
-                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                            <FiFileText className="text-purple-600" />
-                            Marks
-                          </h4>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                              <FiFileText className="text-purple-600" />
+                              Marks
+                            </h4>
+                            {student.subjectMarks && student.subjectMarks.length > 0 && (() => {
+                              const overallAvg = calculateOverallAverage(student.subjectMarks);
+                              if (overallAvg !== null) {
+                                return (
+                                  <div className="bg-gradient-to-r from-purple-100 to-blue-100 px-4 py-2 rounded-lg border-2 border-purple-300">
+                                    <p className="text-xs text-gray-600 font-medium">Overall Average</p>
+                                    <p className="text-2xl font-bold text-purple-700">{overallAvg}%</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                           {student.subjectMarks && student.subjectMarks.length > 0 ? (
                             <div className="space-y-4">
-                              {student.subjectMarks.map((subjectRecord, subIdx) => (
-                                <div
-                                  key={subIdx}
-                                  className="bg-white rounded-lg p-4"
-                                >
-                                  <h5 className="font-medium text-gray-900 mb-2">
-                                    {subjectRecord.subject?.name ||
-                                      `Subject ${subIdx + 1}`}
-                                  </h5>
-                                  {subjectRecord.marksPercentage.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                      <table className="min-w-full divide-y divide-gray-200">
-                                        <thead className="bg-gray-50">
-                                          <tr>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                                              Exam Date
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                                              Percentage
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                          {subjectRecord.marksPercentage.map((mark, mIdx) => (
-                                            <tr key={mIdx}>
-                                              <td className="px-4 py-2 text-sm">
-                                                {formatDate(mark.examDate)}
-                                              </td>
-                                              <td className="px-4 py-2 text-sm font-medium">
-                                                {mark.percentage}%
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                              {student.subjectMarks.map((subjectRecord, subIdx) => {
+                                const stats = calculateSubjectStats(subjectRecord.marksPercentage);
+                                return (
+                                  <div
+                                    key={subIdx}
+                                    className="bg-white rounded-lg p-4 border-2 border-gray-200"
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h5 className="font-medium text-gray-900">
+                                        {subjectRecord.subject?.name ||
+                                          `Subject ${subIdx + 1}`}
+                                      </h5>
+                                      {stats.avg !== null && (
+                                        <div className="flex gap-3 text-sm">
+                                          <div className="text-center">
+                                            <p className="text-xs text-gray-500">Min</p>
+                                            <p className="font-bold text-red-600">{stats.min}%</p>
+                                          </div>
+                                          <div className="text-center">
+                                            <p className="text-xs text-gray-500">Avg</p>
+                                            <p className="font-bold text-blue-600">{stats.avg}%</p>
+                                          </div>
+                                          <div className="text-center">
+                                            <p className="text-xs text-gray-500">Max</p>
+                                            <p className="font-bold text-green-600">{stats.max}%</p>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">
-                                      No marks records for this subject
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
+                                    {subjectRecord.marksPercentage.length > 0 ? (
+                                      <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                                                Exam Date
+                                              </th>
+                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                                                Percentage
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-200">
+                                            {subjectRecord.marksPercentage.map((mark, mIdx) => (
+                                              <tr key={mIdx}>
+                                                <td className="px-4 py-2 text-sm">
+                                                  {formatDate(mark.examDate)}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm font-medium">
+                                                  {mark.percentage}%
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-gray-500">
+                                        No marks records for this subject
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="text-sm text-gray-500">
@@ -999,7 +1077,8 @@ const StudentReports = () => {
           )}
         </AnimatePresence>
       </div>
-    </div>
+      </div>
+    
   );
 };
 

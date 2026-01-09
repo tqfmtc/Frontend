@@ -4,6 +4,7 @@ import { FaRupeeSign } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { authFetch } from '../../utils/auth';
 import Papa from 'papaparse';
+import { hasWritePermission } from '../../utils/permissions';
 
 // API function to fetch all hadiya records
 const fetchHadiyaReportAPI = async (params) => {
@@ -377,123 +378,226 @@ const HadiyaManagement = () => {
           <span className="ml-3 text-gray-600">Loading...</span>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
-          <table className="w-full min-w-max">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10">Tutor Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Center</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Hadiya (₹)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Notes</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tutors.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                    <FiUsers size={48} className="mx-auto mb-4 text-gray-400"/>
-                    <p className="text-xl font-semibold">No tutor data found.</p>
-                    <p>Try adjusting the filters or ensure tutors have assigned Hadiya amounts.</p>
-                  </td>
-                </tr>
-              ) : (
-                tutors.map((tutor) => {
-                  // Find existing payment record for this month/year
-                  const existingRecord = tutor.hadiyaRecords?.find(
-                    r => r.month === selectedMonth && r.year === selectedYear
-                  );
-                  
-                  // Check if this month/year is already paid and frozen
-                  const isLocked = !!existingRecord;
-                  
-                  // Display value (existing record amount)
-                  const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
-                  const assignedAmount = tutor.assignedHadiyaAmount || 0;
+        <>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {tutors.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                <FiUsers size={48} className="mx-auto mb-4 text-gray-400"/>
+                <p className="text-xl font-semibold text-gray-700">No tutor data found.</p>
+                <p className="text-gray-500 mt-2">Try adjusting the filters or ensure tutors have assigned Hadiya amounts.</p>
+              </div>
+            ) : (
+              tutors.map((tutor) => {
+                const existingRecord = tutor.hadiyaRecords?.find(
+                  r => r.month === selectedMonth && r.year === selectedYear
+                );
+                const isLocked = !!existingRecord;
+                const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
+                const assignedAmount = tutor.assignedHadiyaAmount || 0;
 
-                  return (
-                    <tr key={tutor.tutorId} className={`hover:bg-gray-50 ${isLocked ? 'bg-gray-50' : ''}`}>
-                      {/* Tutor Name Cell */}
-                      <td className="px-4 py-3 sticky left-0 bg-white hover:bg-gray-50">
-                        <div className="font-medium text-gray-900">{tutor.tutorName}</div>
-                        <div className="text-sm text-gray-500">ID: ...{tutor.tutorId.slice(-6)}</div>
-                      </td>
-                      
-                      {/* Center Cell */}
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {tutor.assignedCenter?.name || 'N/A'}
-                      </td>
-                      
-                      {/* Assigned Amount Cell */}
-                      <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                        {assignedAmount.toLocaleString('en-IN')}
-                      </td>
-                      
-                      {/* Payment Amount Cell */}
-                      <td className="px-4 py-3">
+                return (
+                  <div key={tutor.tutorId} className={`bg-white rounded-xl shadow-md p-4 border-2 ${isLocked ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-3 pb-3 border-b border-gray-200">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 text-base">{tutor.tutorName}</h3>
+                        <p className="text-sm text-gray-500">{tutor.assignedCenter?.name || 'N/A'}</p>
+                        <p className="text-xs text-gray-400 mt-1">ID: ...{tutor.tutorId.slice(-6)}</p>
+                      </div>
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {isLocked ? '✓ Paid' : '⏳ Pending'}
+                      </span>
+                    </div>
+
+                    {/* Hadiya Info */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex justify-between items-center bg-blue-50 p-3 rounded-lg">
+                        <span className="text-sm font-medium text-gray-700">Assigned Hadiya</span>
+                        <span className="text-lg font-bold text-blue-700">₹ {assignedAmount.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      {/* Payment Input/Display */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {isLocked && !tutor.forceEdit ? 'Amount Paid' : 'Payment Amount'}
+                        </label>
                         {(isLocked && !tutor.forceEdit) ? (
-                          // LOCKED - Display frozen amount (no lock icon/text)
-                          <div className="w-full pl-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-sm flex items-center">
-                            <span className="font-medium">₹ {amountPaid.toLocaleString('en-IN')}</span>
+                          <div className="w-full p-3 bg-gray-100 border-2 border-gray-300 rounded-lg flex items-center justify-between">
+                            <span className="font-bold text-gray-900 text-lg">₹ {amountPaid.toLocaleString('en-IN')}</span>
+                            <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">Locked</span>
                           </div>
                         ) : (
-                          // UNLOCKED - Allow new payment entry without button
                           <input
                             type="number"
                             placeholder="Enter amount"
                             value={tutor.tempAmount || ''}
                             onChange={(e) => handleAmountChange(tutor.tutorId, e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             min="0"
                             max={assignedAmount}
+                            disabled={!hasWritePermission('hadiya')}
                           />
                         )}
-                      </td>
-                      
-                      {/* Notes Cell */}
-                      <td className="px-4 py-3">
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
                         {(isLocked && !tutor.forceEdit) ? (
-                           // Display saved notes for locked payments (no lock icon/text)
-                           <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 min-h-[48px]">
-                             {existingRecord?.notes || '-'}
-                           </div>
-                         ) : (
-                          // Notes input field for new payments
+                          <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border-2 border-gray-200 min-h-[60px]">
+                            {existingRecord?.notes || '-'}
+                          </div>
+                        ) : (
                           <textarea
                             placeholder="Add payment notes"
                             value={tutor.tempNotes || ''}
                             onChange={(e) => handleNotesChange(tutor.tutorId, e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded resize-none" 
-                            rows="2"
+                            className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows="3"
+                            disabled={!hasWritePermission('hadiya')}
                           />
                         )}
-                      </td>
-                      
-                      {/* Status Cell */}
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                          {isLocked ? (
-                            'Paid'
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    {!isLocked && hasWritePermission('hadiya') && (
+                      <button 
+                        onClick={() => handleConfirmAmount(tutor.tutorId)}
+                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md flex items-center justify-center gap-2"
+                      >
+                        <FiSave size={18} /> Save Payment
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white rounded-xl shadow-lg overflow-x-auto">
+            <table className="w-full min-w-max">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10">Tutor Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Center</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Hadiya (₹)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Notes</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {tutors.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                      <FiUsers size={48} className="mx-auto mb-4 text-gray-400"/>
+                      <p className="text-xl font-semibold">No tutor data found.</p>
+                      <p>Try adjusting the filters or ensure tutors have assigned Hadiya amounts.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  tutors.map((tutor) => {
+                    // Find existing payment record for this month/year
+                    const existingRecord = tutor.hadiyaRecords?.find(
+                      r => r.month === selectedMonth && r.year === selectedYear
+                    );
+                    
+                    // Check if this month/year is already paid and frozen
+                    const isLocked = !!existingRecord;
+                    
+                    // Display value (existing record amount)
+                    const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
+                    const assignedAmount = tutor.assignedHadiyaAmount || 0;
+
+                    return (
+                      <tr key={tutor.tutorId} className={`hover:bg-gray-50 ${isLocked ? 'bg-gray-50' : ''}`}>
+                        {/* Tutor Name Cell */}
+                        <td className="px-4 py-3 sticky left-0 bg-white hover:bg-gray-50">
+                          <div className="font-medium text-gray-900">{tutor.tutorName}</div>
+                          <div className="text-sm text-gray-500">ID: ...{tutor.tutorId.slice(-6)}</div>
+                        </td>
+                        
+                        {/* Center Cell */}
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {tutor.assignedCenter?.name || 'N/A'}
+                        </td>
+                        
+                        {/* Assigned Amount Cell */}
+                        <td className="px-4 py-3 text-sm text-gray-700 font-medium">
+                          {assignedAmount.toLocaleString('en-IN')}
+                        </td>
+                        
+                        {/* Payment Amount Cell */}
+                        <td className="px-4 py-3">
+                          {(isLocked && !tutor.forceEdit) ? (
+                            // LOCKED - Display frozen amount (no lock icon/text)
+                            <div className="w-full pl-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-sm flex items-center">
+                              <span className="font-medium">₹ {amountPaid.toLocaleString('en-IN')}</span>
+                            </div>
                           ) : (
-                            'Pending'
+                            // UNLOCKED - Allow new payment entry without button
+                            <input
+                              type="number"
+                              placeholder="Enter amount"
+                              value={tutor.tempAmount || ''}
+                              onChange={(e) => handleAmountChange(tutor.tutorId, e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                              min="0"
+                              max={assignedAmount}
+                              disabled={!hasWritePermission('hadiya')}
+                            />
                           )}
-                        </span>
-                      </td>
-                      
-                      {/* Action Cell */}
-                      <td className="px-4 py-3 text-center">
-                        {isLocked ? (
-                           <div className="text-xs text-gray-400 italic">Locked</div>
-                         ) : (
-                           <button 
-                             onClick={() => handleConfirmAmount(tutor.tutorId)}
-                             className="px-3 py-1.5 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 transition-colors flex items-center mx-auto"
-                           >
-                             <FiSave className="mr-1" /> Save
-                           </button>
-                         )}
+                        </td>
+                        
+                        {/* Notes Cell */}
+                        <td className="px-4 py-3">
+                          {(isLocked && !tutor.forceEdit) ? (
+                             // Display saved notes for locked payments (no lock icon/text)
+                             <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 min-h-[48px]">
+                               {existingRecord?.notes || '-'}
+                             </div>
+                           ) : (
+                            // Notes input field for new payments
+                            <textarea
+                              placeholder="Add payment notes"
+                              value={tutor.tempNotes || ''}
+                              onChange={(e) => handleNotesChange(tutor.tutorId, e.target.value)}
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded resize-none" 
+                              rows="2"
+                              disabled={!hasWritePermission('hadiya')}
+                            />
+                          )}
+                        </td>
+                        
+                        {/* Status Cell */}
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {isLocked ? (
+                              'Paid'
+                            ) : (
+                              'Pending'
+                            )}
+                          </span>
+                        </td>
+                        
+                        {/* Action Cell */}
+                        <td className="px-4 py-3 text-center">
+                          {isLocked ? (
+                             <div className="text-xs text-gray-400 italic">Locked</div>
+                           ) : hasWritePermission('hadiya') ? (
+                             <button 
+                               onClick={() => handleConfirmAmount(tutor.tutorId)}
+                               className="px-3 py-1.5 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 transition-colors flex items-center mx-auto"
+                             >
+                               <FiSave className="mr-1" /> Save
+                             </button>
+                           ) : (
+                             <div className="text-xs text-gray-400 italic">Read Only</div>
+                           )}
                       </td>
                     </tr>
                   );
@@ -517,6 +621,7 @@ const HadiyaManagement = () => {
             )}
           </table>
         </div>
+        </>
       )}
     </div>
   );
