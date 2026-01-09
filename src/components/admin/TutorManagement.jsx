@@ -6,6 +6,7 @@ import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
 import useGet from '../CustomHooks/useGet';
+import { hasWritePermission } from '../../utils/permissions';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
@@ -520,171 +521,64 @@ const TutorManagement = () => {
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       {mode === 'list' && (
         <>
-          <div style={{ 
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
-            borderRadius: '10px', 
-            padding: '20px', 
-            marginBottom: '24px',
-            color: 'white',
-            boxShadow: '0 10px 25px rgba(59, 130, 246, 0.15)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ flex: '1' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 6px 0' }}>Tutor Management</h1>
-                <p style={{ fontSize: '14px', margin: '0', opacity: '0.9' }}>Manage all tutors, their profiles, and assignments</p>
+          <div className="bg-gradient-to-br from-blue-900 to-blue-500 rounded-lg p-5 mb-6 text-white shadow-lg">
+            {/* Header Section */}
+            <div className="mb-4 md:mb-0">
+              <h1 className="text-2xl font-bold mb-1">Tutor Management</h1>
+              <p className="text-sm opacity-90">Manage all tutors, their profiles, and assignments</p>
+            </div>
+
+            {/* Stats Section - Responsive Grid */}
+            <div className="grid grid-cols-3 gap-3 mt-4 mb-4 md:flex md:gap-6 md:justify-center">
+              <div 
+                className={`text-center p-3 md:px-6 md:py-3 bg-white bg-opacity-10 rounded-lg cursor-pointer transition-all hover:bg-opacity-20 ${statusFilter === 'all' ? 'ring-2 ring-white ring-opacity-50' : ''}`}
+                onClick={() => handleFilterClick('all')}
+              >
+                <h3 className="text-xl md:text-2xl font-bold">{tutorStats.total}</h3>
+                <p className="text-xs md:text-sm mt-1">Total Tutors</p>
               </div>
-              <div style={{ 
-                display: 'flex', 
-                gap: '24px', 
-                alignItems: 'center', 
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                margin: '0 24px'
-              }}>
-                <div 
-                  style={{ 
-                    textAlign: 'center', 
-                    paddingRight: '24px', 
-                    borderRight: '1px solid rgba(255, 255, 255, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: statusFilter === 'all' ? 1 : 0.7,
-                    position: 'relative'
-                  }}
-                  onClick={() => handleFilterClick('all')}
-                  onMouseEnter={(e) => e.target.style.opacity = '1'}
-                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'all' ? 1 : 0.7}
-                >
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0' }}>{tutorStats.total}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Total Tutors</p>
-                  {statusFilter === 'all' && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-2px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '20px',
-                      height: '3px',
-                      backgroundColor: 'white',
-                      borderRadius: '2px'
-                    }}></div>
-                  )}
-                </div>
-                <div 
-                  style={{ 
-                    textAlign: 'center', 
-                    paddingRight: '24px', 
-                    borderRight: '1px solid rgba(255, 255, 255, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: statusFilter === 'active' ? 1 : 0.7,
-                    position: 'relative'
-                  }}
-                  onClick={() => handleFilterClick('active')}
-                  onMouseEnter={(e) => e.target.style.opacity = '1'}
-                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'active' ? 1 : 0.7}
-                >
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#4ade80' }}>{tutorStats.active}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Active Tutors</p>
-                  {statusFilter === 'active' && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-2px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '20px',
-                      height: '3px',
-                      backgroundColor: '#4ade80',
-                      borderRadius: '2px'
-                    }}></div>
-                  )}
-                </div>
-                <div 
-                  style={{ 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: statusFilter === 'inactive' ? 1 : 0.7,
-                    position: 'relative'
-                  }}
-                  onClick={() => handleFilterClick('inactive')}
-                  onMouseEnter={(e) => e.target.style.opacity = '1'}
-                  onMouseLeave={(e) => e.target.style.opacity = statusFilter === 'inactive' ? 1 : 0.7}
-                >
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0', color: '#f87171' }}>{tutorStats.inactive}</h3>
-                  <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Inactive Tutors</p>
-                  {statusFilter === 'inactive' && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-2px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '20px',
-                      height: '3px',
-                      backgroundColor: '#f87171',
-                      borderRadius: '2px'
-                    }}></div>
-                  )}
-                </div>
+              <div 
+                className={`text-center p-3 md:px-6 md:py-3 bg-white bg-opacity-10 rounded-lg cursor-pointer transition-all hover:bg-opacity-20 ${statusFilter === 'active' ? 'ring-2 ring-green-400' : ''}`}
+                onClick={() => handleFilterClick('active')}
+              >
+                <h3 className="text-xl md:text-2xl font-bold text-green-400">{tutorStats.active}</h3>
+                <p className="text-xs md:text-sm mt-1">Active</p>
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div 
+                className={`text-center p-3 md:px-6 md:py-3 bg-white bg-opacity-10 rounded-lg cursor-pointer transition-all hover:bg-opacity-20 ${statusFilter === 'inactive' ? 'ring-2 ring-red-400' : ''}`}
+                onClick={() => handleFilterClick('inactive')}
+              >
+                <h3 className="text-xl md:text-2xl font-bold text-red-400">{tutorStats.inactive}</h3>
+                <p className="text-xs md:text-sm mt-1">Inactive</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mt-4">
+              <button
+                className="px-5 py-2 bg-white bg-opacity-20 text-white border border-white border-opacity-30 rounded-md font-semibold text-sm md:text-base cursor-pointer flex items-center justify-center gap-2 hover:bg-opacity-30 transition-all"
+                onClick={handleExportToExcel}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span className="hidden sm:inline">Export to Excel</span>
+                <span className="sm:hidden">Export</span>
+              </button>
+              {hasWritePermission('tutors') && (
                 <button
-                  style={{ 
-                    padding: '8px 20px', 
-                    background: 'rgba(255, 255, 255, 0.2)', 
-                    color: 'white', 
-                    border: '1px solid rgba(255, 255, 255, 0.3)', 
-                    borderRadius: '6px', 
-                    fontWeight: '600', 
-                    fontSize: '16px', 
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onClick={handleExportToExcel}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                  Export to Excel
-                </button>
-                <button
-                  style={{ 
-                    padding: '8px 20px', 
-                    background: 'white', 
-                    color: '#1e3a8a', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: '600', 
-                    fontSize: '16px', 
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    whiteSpace: 'nowrap'
-                  }}
+                  className="px-5 py-2 bg-white text-blue-900 rounded-md font-semibold text-sm md:text-base cursor-pointer shadow-md flex items-center justify-center gap-2 hover:bg-opacity-90 transition-all"
                   onClick={handleAdd}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
                   Add Tutor
                 </button>
-              </div>
+              )}
             </div>
           </div>
           
