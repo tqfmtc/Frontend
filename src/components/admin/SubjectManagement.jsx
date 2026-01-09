@@ -11,11 +11,23 @@ import {
   FiX,
   FiLoader,
   FiSave,
-  FiEye
+  FiEye,
+  FiToggleLeft,
+  FiToggleRight
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import useGet from '../CustomHooks/useGet';
 import { hasWritePermission } from '../../utils/permissions';
+
+// Helper function to format date as dd/mm/yyyy
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 const SubjectManagement = () => {
   // State management
@@ -201,14 +213,15 @@ const SubjectManagement = () => {
     }
   };
 
-  // Handle delete
-  const handleDelete = async (subjectId) => {
-    if (!window.confirm('Are you sure you want to delete this subject?')) return;
+  // Handle toggle status
+  const handleToggleStatus = async (subject) => {
+    const action = subject.isActive ? 'deactivate' : 'activate';
+    if (!window.confirm(`Are you sure you want to ${action} this subject?`)) return;
 
     try {
       const token = getToken();
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects/${subjectId}`, {
-        method: 'DELETE',
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects/${subject._id}/toggle-status`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -220,12 +233,13 @@ const SubjectManagement = () => {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData || errorMessage;
         } catch (e) {
-          // Ignore JSON parsing error for delete
+          // Ignore JSON parsing error
         }
         throw new Error(errorMessage);
       }
 
-      toast.success('Subject deleted successfully!');
+      const result = await response.json();
+      toast.success(result.message || `Subject ${action}d successfully!`);
       refetchSubjects();
     } catch (error) {
       console.error('Error:', error);
@@ -373,13 +387,20 @@ const SubjectManagement = () => {
                 {currentSubjects.map((subject) => (
                   <tr key={subject._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 mr-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
                           <FiBook className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="text-sm font-medium text-gray-900">
                           {subject.subjectName}
                         </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          subject.isActive 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {subject.isActive ? 'Active' : 'Inactive'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -400,7 +421,7 @@ const SubjectManagement = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {new Date(subject.createdAt).toLocaleDateString()}
+                        {formatDate(subject.createdAt)}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -436,11 +457,25 @@ const SubjectManagement = () => {
                               <FiUserCheck className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDelete(subject._id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Delete Subject"
+                              onClick={() => handleToggleStatus(subject)}
+                              className={`px-4 py-1.5 rounded-full transition-all duration-300 flex items-center gap-2 font-medium text-sm ${
+                                subject.isActive 
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-300' 
+                                  : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                              }`}
+                              title={subject.isActive ? 'Click to Deactivate' : 'Click to Activate'}
                             >
-                              <FiTrash2 className="w-4 h-4" />
+                              {subject.isActive ? (
+                                <>
+                                  <FiToggleRight className="w-5 h-5" />
+                                  <span>ON</span>
+                                </>
+                              ) : (
+                                <>
+                                  <FiToggleLeft className="w-5 h-5" />
+                                  <span>OFF</span>
+                                </>
+                              )}
                             </button>
                           </>
                         )}

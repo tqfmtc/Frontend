@@ -104,7 +104,7 @@ const AdminPage = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-100 text-primary-600 mb-4">
                   <FiUser size={32} />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Login</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">User & Admin Login</h1>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -128,7 +128,7 @@ const AdminPage = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      placeholder="admin@gmail.com"
+                      placeholder="example@gmail.com"
                       required
                     />
                   </div>
