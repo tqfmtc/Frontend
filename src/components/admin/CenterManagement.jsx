@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiX, FiMapPin, FiAlertTriangle, FiFilter, FiUsers, FiMessageSquare, FiStar, FiDownload } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiX, FiMapPin, FiAlertTriangle, FiFilter,FiPhone, FiUser,FiUsers, FiMessageSquare, FiStar, FiDownload } from 'react-icons/fi';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import useGet from '../CustomHooks/useGet';
@@ -9,6 +9,7 @@ import { reverseGeocode } from './utils/reverseGeocode';
 import { toast } from 'react-hot-toast';
 import { useCenterRefetch } from '../../context/CenterRefetchContext';
 import Papa from 'papaparse';
+import { hasWritePermission } from '../../utils/permissions';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -373,12 +374,14 @@ const CenterManagement = () => {
             <FiDownload className="mr-2" />
             Download Centers Report
           </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
-          >
-            Add New Center
-          </button>
+          {hasWritePermission('centers') && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              Add New Center
+            </button>
+          )}
         </div>
       </div>
 
@@ -629,7 +632,109 @@ const CenterManagement = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {currentCenters.map((center) => {
+            const isInactive = center.status === 'inactive';
+            return (
+              <div
+                key={center._id}
+                className={`rounded-xl shadow-md p-4 border-2 transition-all ${
+                  isInactive
+                    ? 'bg-gray-100 border-gray-300'
+                    : 'bg-white border-gray-200'
+                }`}
+                onClick={() => setShowDetails(center)}
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start mb-3 pb-3 border-b border-gray-200">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 text-base">{center.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{center.area}</p>
+                  </div>
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ml-2 ${
+                    isInactive
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {isInactive ? '⏸ Inactive' : '✓ Active'}
+                  </span>
+                </div>
+
+                {/* Sadar Info */}
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <FiUser className="text-gray-500 flex-shrink-0" />
+                    <span className="font-medium text-gray-700">{center.sadarName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <FiPhone className="text-blue-600 flex-shrink-0" />
+                    <a 
+                      href={`tel:${center.sadarContact}`}
+                      className="text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {center.sadarContact}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-blue-50 p-2 rounded-lg text-center">
+                    <p className="text-xs text-gray-600 font-medium">Tutors</p>
+                    <p className="text-xl font-bold text-blue-700">{center.tutors?.length || 0}</p>
+                  </div>
+                  <div className="bg-purple-50 p-2 rounded-lg text-center">
+                    <p className="text-xs text-gray-600 font-medium">Students</p>
+                    <p className="text-xl font-bold text-purple-700">{center.students?.length || 0}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {hasWritePermission('centers') && (
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => {
+                        if (isInactive) return;
+                        e.stopPropagation();
+                        handleEdit(center);
+                      }}
+                      className={`flex-1 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all ${
+                        isInactive
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                      disabled={isInactive}
+                    >
+                      <FiEdit2 size={16} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        if (isInactive || isDeleting) return;
+                        e.stopPropagation();
+                        handleDelete(center);
+                      }}
+                      className={`flex-1 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all ${
+                        isInactive || isDeleting
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      }`}
+                      disabled={isInactive || isDeleting}
+                    >
+                      <FiTrash2 size={16} />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
@@ -682,7 +787,13 @@ const CenterManagement = () => {
                       <div className="text-sm text-gray-900">{center.sadarName}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{center.sadarContact}</div>
+                      <a 
+                        href={`tel:${center.sadarContact}`}
+                        className="text-sm text-blue-600 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {center.sadarContact}
+                      </a>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{center.tutors?.length || 0}</div>
@@ -701,28 +812,32 @@ const CenterManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => {
-                            if (isInactive) return;
-                            e.stopPropagation();
-                            handleEdit(center);
-                          }}
-                          className={`text-blue-600 transition-colors ${isInactive ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-800 cursor-pointer'}`}
-                          disabled={isInactive}
-                        >
-                          <FiEdit2 size={18} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            if (isInactive || isDeleting) return;
-                            e.stopPropagation();
-                            handleDelete(center);
-                          }}
-                          className={`text-red-600 transition-colors ${isInactive || isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-800 cursor-pointer'}`}
-                          disabled={isInactive || isDeleting}
-                        >
-                          <FiTrash2 size={18} />
-                        </button>
+                        {hasWritePermission('centers') && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                if (isInactive) return;
+                                e.stopPropagation();
+                                handleEdit(center);
+                              }}
+                              className={`text-blue-600 transition-colors ${isInactive ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-800 cursor-pointer'}`}
+                              disabled={isInactive}
+                            >
+                              <FiEdit2 size={18} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                if (isInactive || isDeleting) return;
+                                e.stopPropagation();
+                                handleDelete(center);
+                              }}
+                              className={`text-red-600 transition-colors ${isInactive || isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-800 cursor-pointer'}`}
+                              disabled={isInactive || isDeleting}
+                            >
+                              <FiTrash2 size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

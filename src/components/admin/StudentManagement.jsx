@@ -5,6 +5,7 @@ import { BiIdCard } from 'react-icons/bi';
 import useGet from '../CustomHooks/useGet';
 import { toast } from 'react-hot-toast';
 import Papa from 'papaparse';
+import { hasWritePermission } from '../../utils/permissions';
 
 // Helper component for Student Marks
 const StudentMarksDisplay = ({ student }) => {
@@ -130,6 +131,7 @@ const StudentManagement = () => {
   const [selectedTutor, setSelectedTutor] = useState('');
   const [centers, setCenters] = useState([]);
   const [tutors, setTutors] = useState([]); // All tutors
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -139,6 +141,18 @@ const StudentManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null); // For details/profile view
+  
+  // Center Change Modal States
+  const [showChangeCenterModal, setShowChangeCenterModal] = useState(false);
+  const [studentToChangeCenter, setStudentToChangeCenter] = useState(null);
+  const [changeCenterData, setChangeCenterData] = useState({
+    newCenterId: '',
+    newTutorId: ''
+  });
+  const [changeCenterTutors, setChangeCenterTutors] = useState([]);
+  const [loadingChangeCenterTutors, setLoadingChangeCenterTutors] = useState(false);
+  const [isChangingCenter, setIsChangingCenter] = useState(false);
+  const [centerSearchQuery, setCenterSearchQuery] = useState('');
   
   // Form Data
   const [formData, setFormData] = useState({
@@ -158,7 +172,8 @@ const StudentManagement = () => {
     assignedTutor: '',
     remarks: '',
     homeAddress: '',
-    schoolAddress: ''
+    schoolAddress: '',
+    subjects: []
   });
   const [centerTutors, setCenterTutors] = useState([]);
   const [loadingCenterTutors, setLoadingCenterTutors] = useState(false);
@@ -192,6 +207,7 @@ const StudentManagement = () => {
     fetchStudents();
     fetchCenters();
     fetchTutors();
+    fetchSubjects();
   }, []);
 
   const fetchStudents = async () => {
@@ -233,6 +249,19 @@ const StudentManagement = () => {
       setTutors(data);
     } catch (err) {
       console.error('Failed to fetch tutors');
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const token = getToken();
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setSubjects(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch subjects');
     }
   };
 
@@ -335,7 +364,8 @@ const StudentManagement = () => {
       assignedTutor: '',
       remarks: '',
       homeAddress: '',
-      schoolAddress: ''
+      schoolAddress: '',
+      subjects: []
     });
     setCenterTutors([]);
     setIsEditing(false);
@@ -346,6 +376,17 @@ const StudentManagement = () => {
   const openEditModal = (student, e) => {
     e.stopPropagation();
     const centerId = student.assignedCenter?._id || student.assignedCenter || '';
+    
+    // Extract subject IDs from student.subjects array (StudentSubject records)
+    const subjectIds = student.subjects?.map(subj => {
+      // Handle both populated and unpopulated cases
+      if (subj.subject && subj.subject._id) {
+        return subj.subject._id;
+      } else if (subj.subject) {
+        return subj.subject;
+      }
+      return null;
+    }).filter(Boolean) || [];
     
     setFormData({
       _id: student._id,
@@ -365,7 +406,8 @@ const StudentManagement = () => {
       assignedTutor: student.assignedTutor?._id || student.assignedTutor || '',
       remarks: student.remarks || '',
       homeAddress: student.homeAddress || '',
-      schoolAddress: student.schoolAddress || ''
+      schoolAddress: student.schoolAddress || '',
+      subjects: subjectIds
     });
     
     if (centerId) {
@@ -415,7 +457,8 @@ const StudentManagement = () => {
         assignedTutor: formData.assignedTutor || null,
         remarks: formData.remarks.trim(),
         homeAddress: formData.homeAddress.trim(),
-        schoolAddress: formData.schoolAddress.trim()
+        schoolAddress: formData.schoolAddress.trim(),
+        subjects: formData.subjects || []
       };
 
       if (formData.isOrphan) {
@@ -496,6 +539,122 @@ const StudentManagement = () => {
     }
   };
 
+  // Center Change Functions
+  const openChangeCenterModal = (student, e) => {
+    if (e) e.stopPropagation();
+    setStudentToChangeCenter(student);
+    setChangeCenterData({
+      newCenterId: '',
+      newTutorId: ''
+    });
+    setChangeCenterTutors([]);
+    setCenterSearchQuery('');
+    setShowChangeCenterModal(true);
+  };
+
+  const fetchTutorsForCenterChange = async (centerId) => {
+    if (!centerId) {
+      setChangeCenterTutors([]);
+      return;
+    }
+    try {
+      setLoadingChangeCenterTutors(true);
+      const token = getToken();
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/tutors/center/${centerId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChangeCenterTutors(Array.isArray(data) ? data : []);
+      } else {
+        setChangeCenterTutors([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch center tutors', err);
+      toast.error('Failed to load tutors for the selected center');
+      setChangeCenterTutors([]);
+    } finally {
+      setLoadingChangeCenterTutors(false);
+    }
+  };
+
+  const handleCenterChangeInput = async (e) => {
+    const { name, value } = e.target;
+    setChangeCenterData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (name === 'newCenterId') {
+      // Reset tutor selection and fetch new tutors
+      setChangeCenterData(prev => ({ ...prev, newTutorId: '' }));
+      await fetchTutorsForCenterChange(value);
+    }
+  };
+
+  const handleChangeCenterSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!changeCenterData.newCenterId || !changeCenterData.newTutorId) {
+      toast.error('Please select both center and tutor');
+      return;
+    }
+
+    setIsChangingCenter(true);
+
+    try {
+      const token = getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/students/change-center/${studentToChangeCenter._id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            assignedCenterId: changeCenterData.newCenterId,
+            assignedTutorId: changeCenterData.newTutorId
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to change center');
+      }
+
+      toast.success('Student center and tutor updated successfully');
+      setShowChangeCenterModal(false);
+      setStudentToChangeCenter(null);
+      setChangeCenterData({ newCenterId: '', newTutorId: '' });
+      
+      // Refresh the students list
+      await fetchStudents();
+      
+      // If the student details modal is open, close it and reopen with updated data
+      if (selectedStudent && selectedStudent._id === studentToChangeCenter._id) {
+        setSelectedStudent(null);
+      }
+    } catch (err) {
+      console.error('Change center error:', err);
+      toast.error(err.message || 'Failed to change center');
+    } finally {
+      setIsChangingCenter(false);
+    }
+  };
+
+  // Filter centers based on search query
+  const filteredCentersForChange = centers.filter(center => {
+    if (!centerSearchQuery) return true;
+    const query = centerSearchQuery.toLowerCase();
+    return (
+      center.name.toLowerCase().includes(query) ||
+      (center.area && center.area.toLowerCase().includes(query))
+    );
+  });
+
   const handleExportCSV = () => {
     const csvData = students.map(student => ({
       'Student Name': student.name,
@@ -553,13 +712,15 @@ const StudentManagement = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">Student Management</h1>
-          <button
-            onClick={openAddModal}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <FiPlus className="mr-2" />
-            Add Student
-          </button>
+          {hasWritePermission('students') && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+            >
+              <FiPlus className="mr-2" />
+              Add Student
+            </button>
+          )}
         </div>
         
         {/* Search and Filter Section */}
@@ -618,8 +779,107 @@ const StudentManagement = () => {
           </div>
         </div>
 
-        {/* Students Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 bg-white rounded-lg shadow-sm p-4">
+          <AnimatePresence>
+            {currentStudents.map((student) => (
+              <motion.div
+                key={student._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm"
+                onClick={() => setSelectedStudent(student)}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-gray-900">{student.name}</h3>
+                    <p className="text-sm text-gray-500">{student.gender} • {student.medium}</p>
+                  </div>
+                  {hasWritePermission('students') && (
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => openEditModal(student, e)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <FiEdit2 size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteClick(student, e)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 border-t border-gray-100 pt-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <FiPhone className="text-blue-600 flex-shrink-0" />
+                    <a href={`tel:${student.contact}`} className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                      {student.contact}
+                    </a>
+                  </div>
+                  
+                  {student.assignedCenter && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <FiMapPin className="text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-medium text-gray-700">{student.assignedCenter.name}</div>
+                        {student.assignedCenter.area && <div className="text-xs text-gray-400">{student.assignedCenter.area}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {student.assignedTutor && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <FiUser className="text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-medium text-gray-700">{student.assignedTutor.name}</div>
+                        <a href={`tel:${student.assignedTutor.phone}`} className="text-xs text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                          {student.assignedTutor.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasWritePermission('students') && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        onClick={(e) => openChangeCenterModal(student, e)}
+                        className="w-full px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                      >
+                        <FiMapPin size={14} />
+                        Change Center
+                      </button>
+                    </div>
+                  )}
+
+                  {!student.isNonSchoolGoing && student.schoolInfo?.name && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <FiBook className="text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-medium text-gray-700">{student.schoolInfo.name}</div>
+                        {student.schoolInfo.class && <div className="text-xs text-gray-400">Class {getOrdinal(student.schoolInfo.class)}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {student.isNonSchoolGoing && (
+                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                      <FiFileText size={12} />
+                      Non-School Going
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -659,27 +919,38 @@ const StudentManagement = () => {
                           {student.assignedTutor ? (
                             <div>
                               <div className="font-medium">{student.assignedTutor.name}</div>
-                              <div className="text-xs text-gray-400">{student.assignedTutor.phone}</div>
+                              <a href={`tel:${student.assignedTutor.phone}`} className="text-xs text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>{student.assignedTutor.phone}</a>
                             </div>
                           ) : 'Not Assigned'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => openEditModal(student, e)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                            title="Edit"
-                          >
-                            <FiEdit2 size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteClick(student, e)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
-                            title="Delete"
-                          >
-                            <FiTrash2 size={18} />
-                          </button>
+                          {hasWritePermission('students') && (
+                            <>
+                              <button
+                                onClick={(e) => openChangeCenterModal(student, e)}
+                                className="text-green-600 hover:text-green-800 transition-colors"
+                                title="Change Center"
+                              >
+                                <FiMapPin size={18} />
+                              </button>
+                              <button
+                                onClick={(e) => openEditModal(student, e)}
+                                className="text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Edit"
+                              >
+                                <FiEdit2 size={18} />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteClick(student, e)}
+                                className="text-red-600 hover:text-red-800 transition-colors"
+                                title="Delete"
+                              >
+                                <FiTrash2 size={18} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -795,7 +1066,7 @@ const StudentManagement = () => {
                   <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                   <div><label className="block text-sm font-medium text-gray-700">Name</label><p className="mt-1">{selectedStudent.name}</p></div>
                   <div><label className="block text-sm font-medium text-gray-700">Father's Name</label><p className="mt-1">{selectedStudent.fatherName}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700">Contact</label><p className="mt-1">{selectedStudent.contact}</p></div>
+                  <div><label className="block text-sm font-medium text-gray-700">Contact</label><p className="mt-1"><a href={`tel:${selectedStudent.contact}`} className="text-blue-600 hover:underline">{selectedStudent.contact}</a></p></div>
                   <div><label className="block text-sm font-medium text-gray-700">Gender</label><p className="mt-1">{selectedStudent.gender}</p></div>
                   <div><label className="block text-sm font-medium text-gray-700">Medium</label><p className="mt-1">{selectedStudent.medium}</p></div>
                   <div><label className="block text-sm font-medium text-gray-700">Aadhar</label><p className="mt-1">{selectedStudent.aadharNumber}</p></div>
@@ -810,7 +1081,7 @@ const StudentManagement = () => {
                   {selectedStudent.isOrphan && (
                     <>
                       <div><label className="block text-sm font-medium text-gray-700">Guardian</label><p className="mt-1">{selectedStudent.guardianInfo?.name}</p></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Guardian Contact</label><p className="mt-1">{selectedStudent.guardianInfo?.contact}</p></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Guardian Contact</label><p className="mt-1"><a href={`tel:${selectedStudent.guardianInfo?.contact}`} className="text-blue-600 hover:underline">{selectedStudent.guardianInfo?.contact}</a></p></div>
                     </>
                   )}
                   <div><label className="block text-sm font-medium text-gray-700">School Status</label><p className="mt-1">{selectedStudent.isNonSchoolGoing ? 'Non-School Going' : 'School Going'}</p></div>
@@ -826,6 +1097,25 @@ const StudentManagement = () => {
                 </div>
               </div>
 
+              {/* Subjects Section */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assigned Subjects</h3>
+                {selectedStudent.subjects && selectedStudent.subjects.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.subjects.map((subj, idx) => {
+                      const subjectName = subj.subject?.subjectName || subj.subject?.name || 'Unknown Subject';
+                      return (
+                        <span key={idx} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          {subjectName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No subjects assigned</p>
+                )}
+              </div>
+
               {/* Student Marks Section */}
               <div className="border-t pt-6">
                 <h3 className="text-xl font-bold mb-4">Academic Performance</h3>
@@ -833,12 +1123,22 @@ const StudentManagement = () => {
               </div>
 
               <div className="mt-6 flex justify-end space-x-4">
-                <button
-                  onClick={(e) => openEditModal(selectedStudent, e)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                >
-                  <FiEdit2 className="mr-2" /> Edit
-                </button>
+                {hasWritePermission('students') && (
+                  <>
+                    <button
+                      onClick={(e) => openChangeCenterModal(selectedStudent, e)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                    >
+                      <FiMapPin className="mr-2" /> Change Center
+                    </button>
+                    <button
+                      onClick={(e) => openEditModal(selectedStudent, e)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                    >
+                      <FiEdit2 className="mr-2" /> Edit
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setSelectedStudent(null)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -1022,6 +1322,42 @@ const StudentManagement = () => {
                   </div>
                 </div>
 
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Subjects
+                  </label>
+                  {subjects.filter(s => s.isActive !== false).length === 0 ? (
+                    <div className="text-sm text-gray-500">No active subjects available</div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {subjects.filter(s => s.isActive !== false).map(subject => (
+                        <label key={subject._id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.subjects.includes(subject._id)}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setFormData(prev => ({
+                                ...prev,
+                                subjects: isChecked
+                                  ? [...prev.subjects, subject._id]
+                                  : prev.subjects.filter(id => id !== subject._id)
+                              }));
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{subject.subjectName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {formData.subjects.length > 0 && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Selected: {formData.subjects.length} of {subjects.filter(s => s.isActive !== false).length} active subject{subjects.filter(s => s.isActive !== false).length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
                   <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} rows="3" className="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
@@ -1067,6 +1403,216 @@ const StudentManagement = () => {
                   <button onClick={confirmDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change Center Modal */}
+      <AnimatePresence>
+        {showChangeCenterModal && studentToChangeCenter && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                    Change Assigned Center
+                  </h2>
+                  <p className="text-base text-gray-700 mt-2">
+                    Student: <span className="font-semibold">{studentToChangeCenter.name}</span>
+                  </p>
+                  <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full">
+                    <FiMapPin className="text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">
+                      Current: {studentToChangeCenter.assignedCenter?.name || 'None'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowChangeCenterModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <FiX size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleChangeCenterSubmit} className="space-y-6">
+                {/* Center Selection with Search */}
+                <div>
+                  <label className="block text-base font-semibold text-gray-800 mb-3 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    Select New Center
+                  </label>
+                  <div className="relative mb-3">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search centers by name or area..."
+                      value={centerSearchQuery}
+                      onChange={(e) => setCenterSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base"
+                    />
+                  </div>
+                  
+                  <div className="border-2 border-gray-300 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+                    {filteredCentersForChange.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500">
+                        <FiMapPin className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                        <p className="text-lg">No centers found</p>
+                        <p className="text-sm mt-1">Try adjusting your search</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200">
+                        {filteredCentersForChange.map(center => {
+                          const isCurrentCenter = center._id === (studentToChangeCenter.assignedCenter?._id || studentToChangeCenter.assignedCenter);
+                          const isSelected = changeCenterData.newCenterId === center._id;
+                          
+                          return (
+                            <div
+                              key={center._id}
+                              onClick={() => !isCurrentCenter && handleCenterChangeInput({ target: { name: 'newCenterId', value: center._id } })}
+                              className={`p-4 cursor-pointer transition-all ${
+                                isCurrentCenter
+                                  ? 'bg-blue-50 cursor-not-allowed opacity-60'
+                                  : isSelected
+                                  ? 'bg-green-50 border-l-4 border-green-600'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-lg font-semibold text-gray-900">
+                                      {center.name}
+                                    </h4>
+                                    {isCurrentCenter && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        Current
+                                      </span>
+                                    )}
+                                    {isSelected && !isCurrentCenter && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        Selected
+                                      </span>
+                                    )}
+                                  </div>
+                                  {center.area && (
+                                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                                      <FiMapPin className="h-3 w-3" />
+                                      {center.area}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                  isCurrentCenter
+                                    ? 'border-blue-400 bg-blue-100'
+                                    : isSelected
+                                    ? 'border-green-600 bg-green-600'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {isSelected && !isCurrentCenter && (
+                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+                                      <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing {filteredCentersForChange.length} of {centers.length} centers
+                  </p>
+                </div>
+
+                {/* Tutor Selection */}
+                <div>
+                  <label className="block text-base font-semibold text-gray-800 mb-3 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    Select New Tutor
+                  </label>
+                  <select
+                    name="newTutorId"
+                    value={changeCenterData.newTutorId}
+                    onChange={handleCenterChangeInput}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base"
+                    disabled={!changeCenterData.newCenterId || loadingChangeCenterTutors}
+                    required
+                  >
+                    <option value="">
+                      {!changeCenterData.newCenterId
+                        ? 'Select a center first'
+                        : loadingChangeCenterTutors
+                        ? 'Loading tutors...'
+                        : changeCenterTutors.length === 0
+                        ? 'No tutors available in this center'
+                        : 'Select a tutor'}
+                    </option>
+                    {changeCenterTutors.map(tutor => (
+                      <option key={tutor._id} value={tutor._id}>
+                        {tutor.name} {tutor.phone ? `(${tutor.phone})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingChangeCenterTutors && (
+                    <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500"></div>
+                      Loading tutors for selected center...
+                    </p>
+                  )}
+                  {!loadingChangeCenterTutors && changeCenterData.newCenterId && changeCenterTutors.length === 0 && (
+                    <p className="text-sm text-amber-700 mt-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      ⚠️ No tutors found in this center. You may need to assign tutors to this center first.
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
+                  <p className="text-sm text-blue-900">
+                    <strong className="font-semibold">Note:</strong> Changing the center will update both the assigned center and tutor for this student. The selected tutor must belong to the chosen center.
+                  </p>
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowChangeCenterModal(false)}
+                    className="px-6 py-3 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                    disabled={isChangingCenter}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2 shadow-lg"
+                    disabled={isChangingCenter || !changeCenterData.newCenterId || !changeCenterData.newTutorId}
+                  >
+                    {isChangingCenter ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <FiMapPin className="h-5 w-5" />
+                        Change Center & Tutor
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

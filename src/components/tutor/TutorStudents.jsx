@@ -105,6 +105,8 @@ const TutorStudents = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [tutorsList, setTutorsList] = useState([])
   const [loadingTutors, setLoadingTutors] = useState(false)
+  const [subjects, setSubjects] = useState([])
+  const [loadingSubjects, setLoadingSubjects] = useState(false)
 
   // Get tutor data from localStorage
   const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
@@ -129,10 +131,34 @@ const TutorStudents = () => {
     assignedTutor: '',
     remarks: '',
     schoolAddress: '',
-    homeAddress: ''
+    homeAddress: '',
+    subjects: []
   })
 
   const refetchCenterContext = useCenterRefetch()
+
+  // Fetch subjects
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        setLoadingSubjects(true)
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+        const token = userData.token
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/subjects`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setSubjects(Array.isArray(data) ? data : [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch subjects:', error)
+      } finally {
+        setLoadingSubjects(false)
+      }
+    }
+    fetchSubjects()
+  }, [])
 
   // ---------- Pagination & Filtering ----------
   // Calculate itemsPerPage based on actual space so the page never scrolls
@@ -173,6 +199,15 @@ const TutorStudents = () => {
       finalValue = value.slice(0, 30);
     } else if (name === 'remarks') {
       finalValue = value.slice(0, 100);
+    } else if (name === 'subjects') {
+      const options = e.target.options;
+      const selectedValues = [];
+      for (let i = 0; i < options.length; i++) {
+        if (options[i].selected) {
+          selectedValues.push(options[i].value);
+        }
+      }
+      finalValue = selectedValues;
     }
 
     setFormData(prev => ({
@@ -224,7 +259,8 @@ const TutorStudents = () => {
         assignedCenter: assignedCenter,
         remarks: formData.remarks.trim(),
         homeAddress: formData.homeAddress.trim(),
-        schoolAddress: formData.schoolAddress.trim()
+        schoolAddress: formData.schoolAddress.trim(),
+        subjects: formData.subjects
       };
 
       // Conditionally add contact and guardian info.
@@ -310,8 +346,8 @@ const TutorStudents = () => {
         throw new Error('Failed to add student');
       }
 
-      toast.success('Student added successfully!')
-      setShowForm(false)
+      toast.success('Student added successfully!');
+      setShowForm(false);
       setFormData({
         name: '',
         fatherName: '',
@@ -328,8 +364,9 @@ const TutorStudents = () => {
         assignedTutor: '',
         remarks: '',
         schoolAddress: '',
-        homeAddress: ''
-      })
+        homeAddress: '',
+        subjects: []
+      });
       refetch() // Refresh the students list
       // Trigger center refetch for instant update
       if (refetchCenterContext && refetchCenterContext.current) {
@@ -545,6 +582,17 @@ const TutorStudents = () => {
 
   // Edit student handler
   const handleEditStudent = (student) => {
+    // Extract subject IDs from student.subjects array (StudentSubject records)
+    const subjectIds = student.subjects?.map(subj => {
+      // Handle both populated and unpopulated cases
+      if (subj.subject && subj.subject._id) {
+        return subj.subject._id;
+      } else if (subj.subject) {
+        return subj.subject;
+      }
+      return null;
+    }).filter(Boolean) || [];
+    
     setEditFormData({
       name: student.name || '',
       fatherName: student.fatherName || '',
@@ -562,6 +610,7 @@ const TutorStudents = () => {
       remarks: student.remarks || '',
       schoolAddress: student.schoolAddress || '',
       homeAddress: student.homeAddress || '',
+      subjects: subjectIds,
       _id: student._id
     })
     setEditMode(true)
@@ -600,6 +649,15 @@ const TutorStudents = () => {
       finalValue = formatAadhar(value);
     } else if (name === 'contact' || name === 'guardianContact') {
       finalValue = formatContact(value);
+    } else if (name === 'subjects') {
+      const options = e.target.options;
+      const selectedValues = [];
+      for (let i = 0; i < options.length; i++) {
+        if (options[i].selected) {
+          selectedValues.push(options[i].value);
+        }
+      }
+      finalValue = selectedValues;
     }
 
     setEditFormData(prev => ({
@@ -678,6 +736,7 @@ const TutorStudents = () => {
         remarks: editFormData.remarks.trim(),
         schoolAddress: editFormData.schoolAddress.trim(),
         homeAddress: editFormData.homeAddress.trim(),
+        subjects: editFormData.subjects || [],
         status: 'active' // Always set to active on edit (reactivate if inactive)
       }
       // Only add guardianInfo if isOrphan is true
@@ -1369,6 +1428,44 @@ const TutorStudents = () => {
               )}
             </div>
 
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subjects
+              </label>
+              {loadingSubjects ? (
+                <div className="text-sm text-gray-500">Loading subjects...</div>
+              ) : subjects.length === 0 ? (
+                <div className="text-sm text-gray-500">No subjects available</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {subjects.map(subject => (
+                    <label key={subject._id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.subjects.includes(subject._id)}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setFormData(prev => ({
+                            ...prev,
+                            subjects: isChecked
+                              ? [...prev.subjects, subject._id]
+                              : prev.subjects.filter(id => id !== subject._id)
+                          }));
+                        }}
+                        className="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                      />
+                      <span className="text-sm text-gray-700">{subject.subjectName}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {formData.subjects.length > 0 && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Selected: {formData.subjects.length} subject{formData.subjects.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Remarks
@@ -1500,6 +1597,25 @@ const TutorStudents = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Subjects Section */}
+          <div className="bg-gray-50 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Assigned Subjects</h3>
+            {showDetails.subjects && showDetails.subjects.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {showDetails.subjects.map((subj, idx) => {
+                  const subjectName = subj.subject?.subjectName || subj.subject?.name || 'Unknown Subject';
+                  return (
+                    <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                      {subjectName}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No subjects assigned</p>
+            )}
           </div>
 
           {/* Guardian Information Section (if orphan) */}
@@ -1720,6 +1836,44 @@ const TutorStudents = () => {
                 </div>
               )}
 
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subjects
+                </label>
+                {loadingSubjects ? (
+                  <div className="text-sm text-gray-500">Loading subjects...</div>
+                ) : subjects.filter(s => s.isActive !== false).length === 0 ? (
+                  <div className="text-sm text-gray-500">No active subjects available</div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {subjects.filter(s => s.isActive !== false).map(subject => (
+                      <label key={subject._id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={(editFormData.subjects || []).includes(subject._id)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setEditFormData(prev => ({
+                              ...prev,
+                              subjects: isChecked
+                                ? [...(prev.subjects || []), subject._id]
+                                : (prev.subjects || []).filter(id => id !== subject._id)
+                            }));
+                          }}
+                          className="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                        />
+                        <span className="text-sm text-gray-700">{subject.subjectName}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {editFormData.subjects && editFormData.subjects.length > 0 && (
+                  <p className="text-xs text-gray-600 mt-2">
+                    Selected: {editFormData.subjects.length} subject{editFormData.subjects.length !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Tutor</label>
                 {loadingTutors ? (
@@ -1744,6 +1898,43 @@ const TutorStudents = () => {
                 )}
                 <p className="text-xs text-gray-500 mt-1">Select a tutor to assign to this student</p>
               </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subjects
+              </label>
+              {loadingSubjects ? (
+                <div className="text-sm text-gray-500">Loading subjects...</div>
+              ) : subjects.filter(s => s.isActive !== false).length === 0 ? (
+                <div className="text-sm text-gray-500">No active subjects available</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {subjects.filter(s => s.isActive !== false).map(subject => (
+                    <label key={subject._id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(editFormData.subjects || []).includes(subject._id)}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setEditFormData(prev => ({
+                            ...prev,
+                            subjects: isChecked
+                              ? [...(prev.subjects || []), subject._id]
+                              : (prev.subjects || []).filter(id => id !== subject._id)
+                          }));
+                        }}
+                        className="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                      />
+                      <span className="text-sm text-gray-700">{subject.subjectName}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {editFormData.subjects && editFormData.subjects.length > 0 && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Selected: {editFormData.subjects.length} subject{editFormData.subjects.length !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
