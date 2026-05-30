@@ -74,7 +74,7 @@ const ReportManagement = () => {
 
   const { response: centers } = useGet('/centers');
   const { response: attendanceReport, loading, error: reportError } = useGet(
-    `/attendance/report?month=${fromMonth}&year=${fromYear}${selectedCenter ? `&centerId=${selectedCenter}` : ''}&limit=10000`
+    `/attendance/report?fromMonth=${fromMonth}&fromYear=${fromYear}&toMonth=${toMonth}&toYear=${toYear}${selectedCenter ? `&centerId=${selectedCenter}` : ''}`
   );
 
   // Get token from localStorage
@@ -175,6 +175,62 @@ const ReportManagement = () => {
     if (val && typeof val === 'object' && val.time) return val.time;
     return null;
   };
+
+  // ─── Shared attendance stats calculator ───────────────────────────────────
+  // Accepts a report object and optional holidayDatesArray.
+  // Returns { totalDays, markedPresentDays, sundayCount, holidayPresentCount,
+  //           totalPresentDays, absentDays, presentPercentage }
+  const calcAttendanceStats = (report, holidayDatesArray = []) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const rangeEnd = new Date(toYear, toMonth, 0); // last day of toMonth
+
+    // Cap the effective end to today so future days don't dilute the %
+    let actualEndYear  = toYear;
+    let actualEndMonth = toMonth;
+    if (rangeEnd > today) {
+      actualEndYear  = now.getFullYear();
+      actualEndMonth = now.getMonth() + 1;
+    }
+
+    // Total calendar days in the effective range
+    const totalDays = countAllDaysInRange(fromYear, fromMonth, actualEndYear, actualEndMonth);
+
+    // Present days explicitly marked (non-Sunday, from API data covering full range)
+    const markedPresentDays = Object.entries(report.attendance || {})
+      .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
+      .length;
+
+    // Sundays in the effective range (auto-present)
+    let sundayCount = 0;
+    let cur = new Date(fromYear, fromMonth - 1, 1);
+    const effEnd = new Date(actualEndYear, actualEndMonth, 0);
+    while (cur <= effEnd) {
+      if (isSunday(cur)) sundayCount++;
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    // Holiday days that were absent (so they become additionally present)
+    let holidayPresentCount = 0;
+    if (holidayDatesArray.length > 0) {
+      const rangeStart = new Date(fromYear, fromMonth - 1, 1);
+      holidayDatesArray.forEach(hDate => {
+        const hd = new Date(hDate);
+        if (hd >= rangeStart && hd <= effEnd && !isSunday(hd)) {
+          if (!isPresent(report.attendance?.[hDate])) holidayPresentCount++;
+        }
+      });
+    }
+
+    const rawPresent  = markedPresentDays + sundayCount + holidayPresentCount;
+    const totalPresentDays = Math.min(rawPresent, totalDays); // never exceed total
+    const absentDays  = Math.max(0, totalDays - totalPresentDays); // never negative
+    const presentPercentage = totalDays > 0 ? (totalPresentDays / totalDays) * 100 : 0;
+
+    return { totalDays, markedPresentDays, sundayCount, holidayPresentCount,
+             totalPresentDays, absentDays, presentPercentage };
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Pagination logic
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
@@ -370,58 +426,10 @@ const ReportManagement = () => {
     
     // Create rows for each tutor (using filteredReports)
     const rows = filteredReports.map(report => {
-      // Count marked present days (excluding Sundays only)
-      // Don't exclude holidays here - we handle holiday logic separately below
-      const markedPresentDays = Object.entries(report.attendance || {})
-        .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
-        .length;
-      
-      // Determine if the range includes current date
-      const now = new Date();
-      const rangeEndDate = new Date(toYear, toMonth, 0);
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      let actualEndYear = toYear;
-      let actualEndMonth = toMonth;
-      
-      if (rangeEndDate > today) {
-        actualEndYear = now.getFullYear();
-        actualEndMonth = now.getMonth() + 1;
-      }
-      
-      // Count ALL days in the range
-      const totalDays = countAllDaysInRange(fromYear, fromMonth, actualEndYear, actualEndMonth);
-      
-      // Count Sundays in the range (auto-present)
-      let sundayCount = 0;
-      let currentDate = new Date(fromYear, fromMonth - 1, 1);
-      const endDate = new Date(actualEndYear, actualEndMonth, 0);
-      while (currentDate <= endDate) {
-        if (isSunday(currentDate)) {
-          sundayCount++;
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-      
-      // Count holidays in the range that make previously absent days present
-      // Only count holidays where the tutor was absent (to avoid double-counting)
-      let holidayPresentCount = 0;
-      holidayDatesArray.forEach(hDate => {
-        const holidayDateObj = new Date(hDate);
-        const rangeStart = new Date(fromYear, fromMonth - 1, 1);
-        const rangeEnd = new Date(actualEndYear, actualEndMonth, 0);
-        if (holidayDateObj >= rangeStart && holidayDateObj <= rangeEnd && !isSunday(holidayDateObj)) {
-          // If tutor was absent on this holiday, count it as an additional present day
-          if (!isPresent(report.attendance?.[hDate])) {
-            holidayPresentCount++;
-          }
-        }
-      });
-      
-      const totalPresentDays = markedPresentDays + sundayCount + holidayPresentCount;
-      const absentDays = totalDays - totalPresentDays;
-      const attendancePercentage = totalDays > 0 ? Math.round((totalPresentDays / totalDays) * 100) : 0;
-      
+      const { totalDays, totalPresentDays, absentDays, presentPercentage } =
+        calcAttendanceStats(report, holidayDatesArray);
+      const attendancePercentage = Math.round(presentPercentage);
+
       const row = [
         report.tutor.name,
         `${attendancePercentage}%`,
@@ -429,29 +437,24 @@ const ReportManagement = () => {
         report.tutor.phone || 'N/A',
         report.center.name
       ];
-      
+
       // Add attendance status for each day
       daysInRangeArr.forEach(day => {
         const dayDate = new Date(day);
         const attVal = report.attendance?.[day];
-        // If it's a Sunday, mark as Present automatically
         if (isSunday(dayDate)) {
           row.push('Present (Sunday)');
         } else if (holidayDatesArray.includes(day)) {
-          // If it's a holiday, mark as Present (Holiday)
           row.push('Present (Holiday)');
         } else if (isPresent(attVal)) {
-          // Present with optional timestamp
           const timeStr = getAttendanceTime(attVal);
           row.push(timeStr ? `Present (${timeStr})` : 'Present');
         } else {
           row.push('Absent');
         }
       });
-      
-      // Add summary data at the end
+
       row.push(totalDays, totalPresentDays, absentDays, `${attendancePercentage}%`);
-      
       return row;
     });
     
@@ -537,42 +540,7 @@ const ReportManagement = () => {
 
     // Create table data (using filteredReports)
     const tableData = filteredReports.map(report => {
-      // Count marked present days (excluding Sundays)
-      const markedPresentDays = Object.entries(report.attendance || {})
-        .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
-        .length;
-      
-      // Determine if the range includes current date
-      const now = new Date();
-      const rangeEndDate = new Date(toYear, toMonth, 0);
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      let actualEndYear = toYear;
-      let actualEndMonth = toMonth;
-      
-      if (rangeEndDate > today) {
-        actualEndYear = now.getFullYear();
-        actualEndMonth = now.getMonth() + 1;
-      }
-      
-      // Count ALL days in the range
-      const totalDays = countAllDaysInRange(fromYear, fromMonth, actualEndYear, actualEndMonth);
-      
-      // Count Sundays (auto-present)
-      let sundayCount = 0;
-      let currentDate = new Date(fromYear, fromMonth - 1, 1);
-      const endDate = new Date(actualEndYear, actualEndMonth, 0);
-      while (currentDate <= endDate) {
-        if (isSunday(currentDate)) {
-          sundayCount++;
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-      
-      // Total present = marked + Sundays
-      const totalPresentDays = markedPresentDays + sundayCount;
-      const absentDays = totalDays - totalPresentDays;
-      
+      const { totalDays, totalPresentDays, absentDays } = calcAttendanceStats(report);
       return [
         report.tutor.name,
         report.center.name,
@@ -854,47 +822,8 @@ const ReportManagement = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentReports.map((report) => {
-                  // Count present days from attendance records (excluding Sundays - they're auto-present)
-                  const markedPresentDays = Object.entries(report.attendance || {})
-                    .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
-                    .length;
-                  
-                  // Determine if the range includes current date
-                  const now = new Date();
-                  const rangeEndDate = new Date(toYear, toMonth, 0); // Last day of toMonth
-                  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                  
-                  // If range end is in the future or is current month, limit to today
-                  let actualEndYear = toYear;
-                  let actualEndMonth = toMonth;
-                  
-                  if (rangeEndDate > today) {
-                    actualEndYear = now.getFullYear();
-                    actualEndMonth = now.getMonth() + 1;
-                  }
-                  
-                  // Count ALL days in the date range (Sundays are auto-present)
-                  const totalDays = countAllDaysInRange(fromYear, fromMonth, actualEndYear, actualEndMonth);
-                  
-                  // Count Sundays in the range (they're automatically present)
-                  let sundayCount = 0;
-                  let currentDate = new Date(fromYear, fromMonth - 1, 1);
-                  const endDate = new Date(actualEndYear, actualEndMonth, 0);
-                  while (currentDate <= endDate) {
-                    if (isSunday(currentDate)) {
-                      sundayCount++;
-                    }
-                    currentDate.setDate(currentDate.getDate() + 1);
-                  }
-                  
-                  // Total present = marked present days + all Sundays
-                  const totalPresentDays = markedPresentDays + sundayCount;
-                  
-                  // Calculate absent days
-                  const absentDays = totalDays - totalPresentDays;
-
-                  // Calculate percentages (handle division by zero)
-                  const presentPercentage = totalDays > 0 ? (totalPresentDays / totalDays) * 100 : 0;
+                  const { totalPresentDays, totalDays, absentDays, presentPercentage } =
+                    calcAttendanceStats(report);
 
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openMapForTutor(report)}>
