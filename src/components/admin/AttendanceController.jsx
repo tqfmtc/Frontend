@@ -162,6 +162,20 @@ const ReportManagement = () => {
     });
   }, [attendanceReport, tutorQuery, centerQuery]);
 
+  // Helper: extract boolean present from attendance value (supports old bool and new {present,time} format)
+  const isPresent = (val) => {
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'object') return Boolean(val.present);
+    return Boolean(val);
+  };
+
+  // Helper: get time string from attendance value
+  const getAttendanceTime = (val) => {
+    if (val && typeof val === 'object' && val.time) return val.time;
+    return null;
+  };
+
   // Pagination logic
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
   const indexOfLastReport = currentPage * itemsPerPage;
@@ -238,7 +252,7 @@ const ReportManagement = () => {
             fillColor: '#3b82f6',
             fillOpacity: 0.7,
           }).addTo(map);
-          marker.bindPopup(`${formatDateShort(p.date)} ${p.time}`);
+          marker.bindPopup(`${formatDateShort(p.date)}${p.time ? ' @ ' + p.time : ''}`);
           markers.push(marker);
         });
 
@@ -342,7 +356,7 @@ const ReportManagement = () => {
     }
     
     // Create CSV headers array (column names only)
-    const headerRow = ['Tutor Name', 'Attendance %', 'Phone', 'Center'];
+    const headerRow = ['Tutor Name', 'Attendance %', 'Avg Mark Time', 'Phone', 'Center'];
     
     // Add a column for each day in the range
     daysInRangeArr.forEach(day => {
@@ -359,7 +373,7 @@ const ReportManagement = () => {
       // Count marked present days (excluding Sundays only)
       // Don't exclude holidays here - we handle holiday logic separately below
       const markedPresentDays = Object.entries(report.attendance || {})
-        .filter(([date, present]) => present && !isSunday(new Date(date)))
+        .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
         .length;
       
       // Determine if the range includes current date
@@ -398,7 +412,7 @@ const ReportManagement = () => {
         const rangeEnd = new Date(actualEndYear, actualEndMonth, 0);
         if (holidayDateObj >= rangeStart && holidayDateObj <= rangeEnd && !isSunday(holidayDateObj)) {
           // If tutor was absent on this holiday, count it as an additional present day
-          if (!report.attendance?.[hDate]) {
+          if (!isPresent(report.attendance?.[hDate])) {
             holidayPresentCount++;
           }
         }
@@ -411,6 +425,7 @@ const ReportManagement = () => {
       const row = [
         report.tutor.name,
         `${attendancePercentage}%`,
+        report.avgMarkTime || 'N/A',
         report.tutor.phone || 'N/A',
         report.center.name
       ];
@@ -418,15 +433,19 @@ const ReportManagement = () => {
       // Add attendance status for each day
       daysInRangeArr.forEach(day => {
         const dayDate = new Date(day);
+        const attVal = report.attendance?.[day];
         // If it's a Sunday, mark as Present automatically
         if (isSunday(dayDate)) {
           row.push('Present (Sunday)');
         } else if (holidayDatesArray.includes(day)) {
           // If it's a holiday, mark as Present (Holiday)
           row.push('Present (Holiday)');
+        } else if (isPresent(attVal)) {
+          // Present with optional timestamp
+          const timeStr = getAttendanceTime(attVal);
+          row.push(timeStr ? `Present (${timeStr})` : 'Present');
         } else {
-          const status = report.attendance?.[day];
-          row.push(status ? 'Present' : 'Absent');
+          row.push('Absent');
         }
       });
       
@@ -520,7 +539,7 @@ const ReportManagement = () => {
     const tableData = filteredReports.map(report => {
       // Count marked present days (excluding Sundays)
       const markedPresentDays = Object.entries(report.attendance || {})
-        .filter(([date, present]) => present && !isSunday(new Date(date)))
+        .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
         .length;
       
       // Determine if the range includes current date
@@ -557,6 +576,7 @@ const ReportManagement = () => {
       return [
         report.tutor.name,
         report.center.name,
+        report.avgMarkTime || 'N/A',
         totalDays.toString(),
         totalPresentDays.toString(),
         absentDays.toString()
@@ -565,7 +585,7 @@ const ReportManagement = () => {
 
     doc.autoTable({
       startY: selectedCenter ? 45 : 35,
-      head: [['Tutor Name', 'Center', 'Total Days', 'Present Days', 'Absent Days']],
+      head: [['Tutor Name', 'Center', 'Avg Mark Time', 'Total Days', 'Present Days', 'Absent Days']],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
@@ -827,13 +847,16 @@ const ReportManagement = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Attendance
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avg Mark Time
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentReports.map((report) => {
                   // Count present days from attendance records (excluding Sundays - they're auto-present)
                   const markedPresentDays = Object.entries(report.attendance || {})
-                    .filter(([date, present]) => present && !isSunday(new Date(date)))
+                    .filter(([date, val]) => isPresent(val) && !isSunday(new Date(date)))
                     .length;
                   
                   // Determine if the range includes current date
@@ -872,7 +895,6 @@ const ReportManagement = () => {
 
                   // Calculate percentages (handle division by zero)
                   const presentPercentage = totalDays > 0 ? (totalPresentDays / totalDays) * 100 : 0;
-                  const absentPercentage = totalDays > 0 ? (absentDays / totalDays) * 100 : 0;
 
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openMapForTutor(report)}>
@@ -897,6 +919,14 @@ const ReportManagement = () => {
                               className="bg-green-600 h-2.5 rounded-full" 
                               style={{ width: `${presentPercentage}%` }}
                             ></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
+                          <div className="text-sm text-gray-700 font-medium">
+                            {report.avgMarkTime || <span className="text-gray-400 text-xs">No data</span>}
                           </div>
                         </div>
                       </td>
@@ -1007,7 +1037,7 @@ const ReportManagement = () => {
                 <ul className="divide-y">
                   {mapPoints.map((p, idx) => (
                     <li key={idx} className="py-2 text-sm">
-                      <div className="font-medium">{formatDateShort(p.date)} {p.time}</div>
+                      <div className="font-medium">{formatDateShort(p.date)}{p.time ? ` @ ${p.time}` : ''}</div>
                       <div className="text-gray-600">Lat: {p.lat.toFixed(6)}, Lng: {p.lng.toFixed(6)}</div>
                     </li>
                   ))}
