@@ -82,7 +82,7 @@ const TutorPage = () => {
 
       const result = await post(`${import.meta.env.VITE_API_URL}/auth/tutor/login`, payload);
       
-      if (result.data.message && result.data.message.includes('within 100 meters')) {
+      if (result.data.message && result.data.message.includes('within 50 meters')) {
         setError(result.data.message);
         setCenterLocation(result.data.centerLocation);
         setDistanceFromCenter(result.data.distance);
