@@ -106,7 +106,7 @@ const GuestOverview = () => {
     setCurrentLocation(loc);
     if (centerLocation) {
       const distance = calculateDistance(loc, centerLocation);
-      setLocationMatch(distance <= 1300);
+      setLocationMatch(distance <= 50);
     }
   };
 
@@ -157,7 +157,7 @@ const GuestOverview = () => {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <LocationMarker onLocationUpdate={handleLocationUpdate} onError={(msg)=>setError(msg)} />
           <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
-          <Circle center={[centerLocation.lat, centerLocation.lng]} radius={1300} pathOptions={{ color: '#4F46E5', fillOpacity: 0.1 }} />
+          <Circle center={[centerLocation.lat, centerLocation.lng]} radius={50} pathOptions={{ color: '#4F46E5', fillOpacity: 0.1 }} />
         </MapContainer>
       </div>
       <button onClick={handleMarkAttendance} disabled={!locationMatch || attendanceMarked} className={`px-6 py-3 rounded-lg text-white font-medium ${locationMatch && !attendanceMarked ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}>Mark Attendance</button>

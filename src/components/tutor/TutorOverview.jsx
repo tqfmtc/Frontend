@@ -301,7 +301,7 @@ const TutorOverview = () => {
     if (centerLocation) {
       const d = calculateDistance(location, centerLocation)
       setDistance(d)
-      setLocationMatch(d <= 0.1) // 100 m threshold (1st code)
+      setLocationMatch(d <= 0.05) // 50 m threshold (1st code)
     }
   }, [centerLocation])
 
@@ -590,7 +590,7 @@ const TutorOverview = () => {
                     {centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng) && (
                       <Circle
                         center={[centerLocation.lat, centerLocation.lng]}
-                        radius={100}
+                        radius={50}
                         pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
                       />
                     )}
