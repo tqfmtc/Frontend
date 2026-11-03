@@ -299,7 +299,7 @@ const StudentReports = () => {
           }
           
           student.subjectMarks.forEach((subjectRecord, sIdx) => {
-            const subjectName = subjectRecord.subject?.name || `Subject ${sIdx + 1}`;
+            const subjectName = subjectRecord.subject?.subjectName || subjectRecord.subject?.name || `Subject ${sIdx + 1}`;
             const list = subjectRecord.marksPercentage || [];
 
             rows.push([subjectName]);
@@ -424,7 +424,7 @@ const StudentReports = () => {
         if (student.subjectMarks && student.subjectMarks.length > 0) {
           let first = true;
           student.subjectMarks.forEach((subjectRecord) => {
-            const subjectName = subjectRecord.subject?.name || 'Unknown Subject';
+            const subjectName = subjectRecord.subject?.subjectName || subjectRecord.subject?.name || 'Unknown Subject';
             const list = subjectRecord.marksPercentage || [];
             if (list.length > 0) {
               list.forEach((mark) => {
@@ -1006,7 +1006,7 @@ const StudentReports = () => {
                                   >
                                     <div className="flex items-center justify-between mb-3">
                                       <h5 className="font-medium text-gray-900">
-                                        {subjectRecord.subject?.name ||
+                                        {subjectRecord.subject?.subjectName || subjectRecord.subject?.name ||
                                           `Subject ${subIdx + 1}`}
                                       </h5>
                                       {stats.avg !== null && (
