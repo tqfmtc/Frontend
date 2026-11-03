@@ -55,11 +55,20 @@ const AnnouncementBanner = () => {
     const track = contentRef.current;
     if (!track) return;
 
-    // Build the inner HTML once (duplicated to allow seamless loop)
-    const msgs = announcements
-      .map(a => `<span class='mr-8 inline-block'><span class='font-semibold mr-1'>${a.title}:</span><span>${a.body}</span></span>`)  
-      .join('');
-    contentRef.current.innerHTML = msgs + msgs; // duplicate
+    // Build the messages once (duplicated to allow seamless loop).
+    // Uses textContent, never innerHTML, so announcement text can't inject markup/scripts.
+    const buildMsg = (a) => {
+      const wrap = document.createElement('span');
+      wrap.className = 'mr-8 inline-block';
+      const title = document.createElement('span');
+      title.className = 'font-semibold mr-1';
+      title.textContent = `${a.title ?? ''}:`;
+      const body = document.createElement('span');
+      body.textContent = a.body ?? '';
+      wrap.append(title, body);
+      return wrap;
+    };
+    track.replaceChildren(...announcements.map(buildMsg), ...announcements.map(buildMsg)); // duplicate
 
     // Set duration based on width for constant speed (~60px/s)
     const width = contentRef.current.scrollWidth / 2;
