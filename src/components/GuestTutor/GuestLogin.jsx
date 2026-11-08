@@ -62,7 +62,7 @@ const GuestLogin = () => {
                         Guest Tutor Login
                     </h1>
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        Enter your phone number and 4-digit PIN.
+                        Enter your phone number and 6-digit PIN.
                     </p>
                 </div>
 
@@ -100,7 +100,7 @@ const GuestLogin = () => {
                             htmlFor="pin"
                             className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                            4-Digit PIN
+                            6-Digit PIN
                         </label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -112,13 +112,13 @@ const GuestLogin = () => {
                                 {...register('pin', {
                                     required: 'PIN is required',
                                     pattern: {
-                                        value: /^[0-9]{4}$/,
-                                        message: 'PIN must be a 4-digit number'
+                                        value: /^[0-9]{6}$/,
+                                        message: 'PIN must be a 6-digit number'
                                     }
                                 })}
                                 className={`w-full pl-10 pr-12 py-3 border ${errors.pin ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 ${errors.pin ? 'focus:ring-red-500' : 'focus:ring-accent-500'} focus:border-transparent transition-colors`}
-                                placeholder="Enter your 4-digit PIN"
-                                maxLength={4}
+                                placeholder="Enter your 6-digit PIN"
+                                maxLength={6}
                             />
                             <button
                                 type="button"
