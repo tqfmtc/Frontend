@@ -43,7 +43,7 @@ const SubjectManagement = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [tutorCenterId, setTutorCenterId] = useState(null);
+  const [tutorCenterIds, setTutorCenterIds] = useState([]);
   const [viewLoading, setViewLoading] = useState(false);
   const [studentsToRemove, setStudentsToRemove] = useState([]);
   const [removeLoading, setRemoveLoading] = useState(false);
@@ -72,14 +72,15 @@ const SubjectManagement = () => {
     if (studentsData) setStudents(studentsData);
     setLoading(subjectsLoading);
 
-    // Get tutor's center ID from localStorage
+    // Get tutor's center IDs from localStorage (logins saved before multi-center only have assignedCenter)
     const userData = localStorage.getItem('userData');
     if (userData) {
       try {
         const parsedData = JSON.parse(userData);
-        if (parsedData.assignedCenter?._id) {
-          setTutorCenterId(parsedData.assignedCenter._id);
-        }
+        const centers = parsedData.assignedCenters?.length
+          ? parsedData.assignedCenters
+          : (parsedData.assignedCenter ? [parsedData.assignedCenter] : []);
+        setTutorCenterIds(centers.map(c => c?._id).filter(Boolean));
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
@@ -191,10 +192,10 @@ const SubjectManagement = () => {
     setSelectedSubject(null);
   };
 
-  // Fetch subject details filtered by center
+  // Fetch subject details filtered to the tutor's centers (one request per center, students merged)
   const fetchSubjectByCenter = async (subjectId) => {
     try {
-      if (!tutorCenterId) {
+      if (!tutorCenterIds.length) {
         toast.error('Center information not found');
         return;
       }
@@ -202,21 +203,23 @@ const SubjectManagement = () => {
       setViewLoading(true);
       const token = getToken();
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/subjects/${subjectId}/${tutorCenterId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
+      const results = await Promise.all(tutorCenterIds.map(async (centerId) => {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/subjects/${subjectId}/${centerId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
           }
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch subject details');
         }
-      );
+        return response.json();
+      }));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch subject details');
-      }
-
-      const data = await response.json();
-      setSelectedSubject(data);
+      const students = results.flatMap(r => r.students || []);
+      setSelectedSubject({ ...results[0], students });
     } catch (error) {
       console.error('Error fetching subject by center:', error);
       toast.error(error.message || 'Failed to load subject details');

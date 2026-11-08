@@ -27,12 +27,13 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs, isMobile, isOpen, onClose
     return null; // or a loading spinner
   }
 
-  // Get center name from tutor profile
+  // Get center name(s) from tutor profile (logins saved before multi-center only have assignedCenter)
   const getCenterName = () => {
-    if (tutorProfile.assignedCenter?.name) {
-      return tutorProfile.assignedCenter.name;
-    }
-    return 'Center not assigned';
+    const centers = tutorProfile.assignedCenters?.length
+      ? tutorProfile.assignedCenters
+      : (tutorProfile.assignedCenter ? [tutorProfile.assignedCenter] : []);
+    const names = centers.map((c) => c?.name).filter(Boolean);
+    return names.length ? names.join(', ') : 'Center not assigned';
   };
 
   return (

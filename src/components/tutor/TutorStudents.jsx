@@ -110,6 +110,11 @@ const TutorStudents = () => {
 
   // Get tutor data from localStorage
   const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
+  // The tutor's centers. Login returns assignedCenters; logins saved before that only have assignedCenter
+  const myCenters = tutorData.assignedCenters?.length
+    ? tutorData.assignedCenters
+    : (tutorData.assignedCenter ? [tutorData.assignedCenter] : [])
+  const centerIdOf = (c) => (c && typeof c === 'object' ? c._id : c)
 
   // Fetch students data
   const endpoint = `/students?status=${selectedFilter}`;
@@ -129,6 +134,7 @@ const TutorStudents = () => {
     medium: '',
     aadharNumber: '',
     assignedTutor: '',
+    assignedCenter: '', // chosen only when the tutor has several centers
     remarks: '',
     schoolAddress: '',
     homeAddress: '',
@@ -240,11 +246,13 @@ const TutorStudents = () => {
       console.log('Tutor Data:', tutorData)
       
       console.log(userData.token)
-      console.log('Assigned Center:', tutorData.assignedCenter)
-      // Robust check for assignedCenter
-      const assignedCenter = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
-      if (!assignedCenter) {
+      // The student's center: the tutor's only center, or the one picked in the form
+      const assignedCenter = myCenters.length === 1 ? centerIdOf(myCenters[0]) : formData.assignedCenter
+      if (!myCenters.length) {
         throw new Error('Tutor center information not found (assignedCenter is missing or invalid)')
+      }
+      if (!assignedCenter) {
+        throw new Error('Please select the center for this student')
       }
 
       // Format the data according to backend requirements
@@ -362,6 +370,7 @@ const TutorStudents = () => {
         medium: '',
         aadharNumber: '',
         assignedTutor: '',
+        assignedCenter: '',
         remarks: '',
         schoolAddress: '',
         homeAddress: '',
@@ -611,6 +620,8 @@ const TutorStudents = () => {
       schoolAddress: student.schoolAddress || '',
       homeAddress: student.homeAddress || '',
       subjects: subjectIds,
+      // Keep the student's own center (the tutor may have several)
+      assignedCenter: centerIdOf(student.assignedCenter) || '',
       _id: student._id
     })
     setEditMode(true)
@@ -675,11 +686,11 @@ const TutorStudents = () => {
       const token = userData.token
       if (!token) throw new Error('Please login to continue')
 
-      const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
-      const assignedCenter = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
+      // The student stays at their own center; sending the tutor's center would move them
+      const assignedCenter = editFormData.assignedCenter
 
       if (!assignedCenter) {
-        throw new Error('Tutor center information not found')
+        throw new Error('Student center information not found')
       }
 
       // ---- Additional front-end validations for edit ----
@@ -1394,6 +1405,26 @@ const TutorStudents = () => {
                   required
                 />
               </div>
+
+              {myCenters.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">
+                    Center
+                  </label>
+                  <select
+                    name="assignedCenter"
+                    value={formData.assignedCenter}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                    required
+                  >
+                    <option value="">Select center</option>
+                    {myCenters.map((c) => (
+                      <option key={centerIdOf(c)} value={centerIdOf(c)}>{c.name || centerIdOf(c)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 after:content-['*'] after:ml-0.5 after:text-red-500">

@@ -246,9 +246,13 @@ const TutorOverview = () => {
   const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
   const { response: students, loading } = useGet('/students')
 
+  // The tutor's centers. Login returns assignedCenters; logins saved before that only have assignedCenter
+  const myCenters = tutorData?.assignedCenters?.length
+    ? tutorData.assignedCenters
+    : (tutorData?.assignedCenter ? [tutorData.assignedCenter] : [])
+
   // Resolve center coordinates robustly: supports [lat,lng], "lat, lng", or {lat,lng}
-  const centerLocation = (() => {
-    const coords = tutorData?.assignedCenter?.coordinates
+  const parseCenterLocation = (coords) => {
     if (!coords) return null
 
     let lat = null
@@ -274,13 +278,7 @@ const TutorOverview = () => {
       return { lat, lng }
     }
     return null
-  })()
-
-  const centerStudents = students ? students.filter(s => {
-    const studentCenterId = s.assignedCenter && (typeof s.assignedCenter === 'string' ? s.assignedCenter : s.assignedCenter._id)
-    const tutorCenterId = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
-    return studentCenterId === tutorCenterId
-  }).length : 0
+  }
 
   // Distance calc (Haversine)
   const calculateDistance = (loc1, loc2) => {
@@ -294,16 +292,38 @@ const TutorOverview = () => {
     return R * c
   }
 
+  const centerPoints = myCenters
+    .map(center => ({ center, location: parseCenterLocation(center?.coordinates) }))
+    .filter(p => p.location)
+
+  // Attendance counts for the tutor's nearest center (the server picks it the same way);
+  // until the tutor is located, use the first one
+  const nearestPoint = (location) => (location && centerPoints.length)
+    ? centerPoints.reduce((best, p) =>
+        calculateDistance(location, p.location) < calculateDistance(location, best.location) ? p : best)
+    : centerPoints[0]
+  const activePoint = nearestPoint(currentLocation)
+  const centerLocation = activePoint?.location || null
+  const activeCenter = activePoint?.center
+
+  const myCenterIds = myCenters.map(c => (typeof c === 'string' ? c : c?._id))
+  const centerStudents = students ? students.filter(s => {
+    const studentCenterId = s.assignedCenter && (typeof s.assignedCenter === 'string' ? s.assignedCenter : s.assignedCenter._id)
+    return myCenterIds.includes(studentCenterId)
+  }).length : 0
+
   const handleLocationUpdate = useCallback((location) => {
     setLocationError(null)
     setIsLocationLoading(false)
     setCurrentLocation(location)
-    if (centerLocation) {
-      const d = calculateDistance(location, centerLocation)
+    const nearest = nearestPoint(location)
+    if (nearest) {
+      const d = calculateDistance(location, nearest.location)
       setDistance(d)
       setLocationMatch(d <= 0.05) // 50 m threshold (1st code)
     }
-  }, [centerLocation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(centerPoints.map(p => p.location))])
 
   const handleLocationError = useCallback((message) => {
     setLocationError(message || 'Location error')
@@ -330,7 +350,7 @@ const TutorOverview = () => {
         { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
       )
     } else {
-      const fallbackQuery = tutorData?.assignedCenter?.name || tutorData?.assignedCenter?.city || ''
+      const fallbackQuery = activeCenter?.name || activeCenter?.city || ''
       fetchLocationFallback(fallbackQuery).then(fp => {
         if (fp) handleLocationUpdate(fp)
         else {
@@ -580,20 +600,22 @@ const TutorOverview = () => {
                     <LocationMarker
                       onLocationUpdate={handleLocationUpdate}
                       onLocationError={handleLocationError}
-                      fallbackQuery={tutorData?.assignedCenter?.name || tutorData?.assignedCenter?.city || ''}
+                      fallbackQuery={activeCenter?.name || activeCenter?.city || ''}
                     />
 
-                    {centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng) && (
-                      <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
-                    )}
+                    {/* Every assigned center, with its 50 m attendance radius */}
+                    {centerPoints.map(({ center, location }) => (
+                      <Marker key={`m-${center?._id}`} position={[location.lat, location.lng]} icon={blueIcon} />
+                    ))}
 
-                    {centerLocation && Number.isFinite(centerLocation.lat) && Number.isFinite(centerLocation.lng) && (
+                    {centerPoints.map(({ center, location }) => (
                       <Circle
-                        center={[centerLocation.lat, centerLocation.lng]}
+                        key={`c-${center?._id}`}
+                        center={[location.lat, location.lng]}
                         radius={50}
                         pathOptions={{ color: '#4F46E5', fillColor: '#4F46E5', fillOpacity: 0.1 }}
                       />
-                    )}
+                    ))}
                   </MapContainer>
                 </div>
 
@@ -620,7 +642,7 @@ const TutorOverview = () => {
                               </p>
                               {distance !== null && (
                                 <p className="text-sm text-gray-500">
-                                  Distance: {(distance * 1000).toFixed(0)}m from center
+                                  Distance: {(distance * 1000).toFixed(0)}m from {myCenters.length > 1 && activeCenter?.name ? activeCenter.name : 'center'}
                                 </p>
                               )}
                             </div>
