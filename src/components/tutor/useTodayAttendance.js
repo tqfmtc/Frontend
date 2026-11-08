@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 
-// Custom hook to check if today's attendance is already marked for the logged-in tutor
+// Custom hook to check if today's attendance is already marked for the logged-in tutor.
+// markedCenterIds lists the centers marked today (a tutor can be marked once per center).
 export default function useTodayAttendance() {
   const [alreadyMarked, setAlreadyMarked] = useState(false);
+  const [markedCenterIds, setMarkedCenterIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -33,10 +35,11 @@ export default function useTodayAttendance() {
       .then(records => {
         // Debug: log records
         // console.log('Attendance records:', records);
-        const found = records.some(
+        const todays = records.filter(
           r => r.tutor && (r.tutor._id === tutorId) && format(new Date(r.date || r.createdAt), 'yyyy-MM-dd') === today
         );
-        setAlreadyMarked(found);
+        setAlreadyMarked(todays.length > 0);
+        setMarkedCenterIds(todays.map(r => r.center?._id || r.center).filter(Boolean));
         setLoading(false);
       })
       .catch(e => {
@@ -45,5 +48,5 @@ export default function useTodayAttendance() {
       });
   }, []);
 
-  return { alreadyMarked, loading, error };
+  return { alreadyMarked, markedCenterIds, loading, error };
 }

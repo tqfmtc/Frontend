@@ -226,7 +226,7 @@ const LocationMarker = ({ onLocationUpdate, onLocationError, fallbackQuery }) =>
 
 // ---------------- Main component ----------------
 const TutorOverview = () => {
-  const { alreadyMarked, loading: attendanceCheckLoading } = useTodayAttendance()
+  const { alreadyMarked: anyMarkedToday, markedCenterIds, loading: attendanceCheckLoading } = useTodayAttendance()
   const [showDeniedPopover, setShowDeniedPopover] = useState(false)
 
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -237,7 +237,7 @@ const TutorOverview = () => {
 
   const [currentLocation, setCurrentLocation] = useState(null)
   const [locationMatch, setLocationMatch] = useState(null)
-  const [attendanceMarked, setAttendanceMarked] = useState(false)
+  const [justMarkedIds, setJustMarkedIds] = useState([]) // centers marked in this session
   const [error, setError] = useState(null)
   const [locationError, setLocationError] = useState(null)
   const [distance, setDistance] = useState(null)
@@ -305,6 +305,17 @@ const TutorOverview = () => {
   const activePoint = nearestPoint(currentLocation)
   const centerLocation = activePoint?.location || null
   const activeCenter = activePoint?.center
+
+  // A tutor can be marked once per center per day, so "marked" means the nearest center is
+  // done. Until the tutor is located, only when every center is done (the map that finds the
+  // location is hidden once marked). Single-center tutors: any record today counts, as before.
+  const markedIds = [...markedCenterIds, ...justMarkedIds]
+  const alreadyMarked = myCenters.length > 1
+    ? (currentLocation
+        ? !!activeCenter && markedIds.includes(activeCenter._id)
+        : myCenters.every(c => markedIds.includes(c._id)))
+    : anyMarkedToday || justMarkedIds.length > 0
+  const attendanceMarked = alreadyMarked
 
   const myCenterIds = myCenters.map(c => (typeof c === 'string' ? c : c?._id))
   const centerStudents = students ? students.filter(s => {
@@ -384,7 +395,8 @@ const TutorOverview = () => {
 
       const data = await response.json()
       if (data?.message === 'Attendance submitted successfully') {
-        setAttendanceMarked(true)
+        // The server reports which center it recorded (the nearest one)
+        setJustMarkedIds(ids => [...ids, data.attendance?.center || activeCenter?._id])
         setError(null)
       } else if (data?.code === 11000 || (data?.error && String(data.error).includes('E11000'))) {
         setShowDeniedPopover(true)
@@ -508,7 +520,7 @@ const TutorOverview = () => {
         ) : alreadyMarked ? (
           <div className="mb-6 p-4 bg-green-50/80 backdrop-blur-sm text-green-700 rounded-xl border border-green-100 flex items-center">
             <FiCheck className="h-5 w-5 mr-3" />
-            Today's attendance has already been marked.
+            Today's attendance has already been marked{myCenters.length > 1 && activeCenter?.name ? ` at ${activeCenter.name}` : ''}.
           </div>
         ) : (
           <>
