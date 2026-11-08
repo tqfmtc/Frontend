@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 import Popover from '../../common/Popover';
 import { hasWritePermission } from '../../../utils/permissions';
+import { tutorCenters, tutorCenterNames } from '../../../utils/tutorCenters';
 
 // Helper function to format date as dd/mm/yyyy
 const formatDate = (dateString) => {
@@ -53,8 +54,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
         (tutor.name && tutor.name.toLowerCase().includes(term)) ||
         (tutor.email && tutor.email.toLowerCase().includes(term)) ||
         (tutor.phone && tutor.phone.includes(term)) ||
-        (tutor.assignedCenter && tutor.assignedCenter.name && 
-          tutor.assignedCenter.name.toLowerCase().includes(term))
+        tutorCenterNames(tutor, '').toLowerCase().includes(term)
       );
     }
     
@@ -80,8 +80,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
         (tutor.name && tutor.name.toLowerCase().includes(term)) ||
         (tutor.email && tutor.email.toLowerCase().includes(term)) ||
         (tutor.phone && tutor.phone.includes(term)) ||
-        (tutor.assignedCenter && tutor.assignedCenter.name && 
-          tutor.assignedCenter.name.toLowerCase().includes(term))
+        tutorCenterNames(tutor, '').toLowerCase().includes(term)
       );
     }
     
@@ -214,12 +213,6 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
     };
   };
   
-  // Get center name by ID
-  const getCenterName = (centerId) => {
-    const center = tutors.find(t => t.assignedCenter && t.assignedCenter.name);
-    return center ? center.assignedCenter.name : 'Unknown';
-  };
-
   // Calculate stats once
   const stats = getStats();
 
@@ -328,7 +321,7 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                     {tutor.name}
                   </div>
                   <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    {tutor.assignedCenter ? tutor.assignedCenter.name : 'Not assigned'}
+                    {tutorCenterNames(tutor)}
                   </div>
                 </div>
                 <span
@@ -531,18 +524,19 @@ const TutorList = ({ onEdit, onDelete, onProfile, statusFilter = 'all' }) => {
                   </td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{tutor.email}</td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
-                    {tutor.assignedCenter ? (
-                      <div style={{ 
+                    {tutorCenters(tutor).length ? tutorCenters(tutor).map((center) => (
+                      <div key={center._id} style={{
                         display: 'inline-block',
                         padding: '4px 8px',
+                        margin: '0 4px 4px 0',
                         background: '#f3f4f6',
                         borderRadius: '4px',
                         fontSize: '12px',
                         fontWeight: '500'
                       }}>
-                        {tutor.assignedCenter.name || 'Unknown'}
+                        {center.name || 'Unknown'}
                       </div>
-                    ) : 'Not assigned'}
+                    )) : 'Not assigned'}
                   </td>
                   <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
                     {formatDate(tutor.joiningDate)}

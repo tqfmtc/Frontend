@@ -84,6 +84,9 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
     return subjects;
   };
 
+  // Whether any of the tutor's centers runs this session type
+  const hasSession = (type) => (tutor.assignments || []).some((a) => a.sessionType === type);
+
   // Helper function to format session type
   const formatSessionType = (type) => {
     if (!type) return 'Not specified';
@@ -169,28 +172,25 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
               <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Session Information</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-                {/* Session Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
-                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
-                    {formatSessionType(tutor.sessionType)}
-                  </div>
-                </div>
-
-                {/* Session Timing */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Timing</label>
-                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
-                    {formatSessionTiming(tutor.sessionTiming)}
-                  </div>
-                </div>
-
-                {/* Assigned Center */}
+                {/* Assigned Centers, each with its session */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Center</label>
-                  <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
-                    {tutor.assignedCenter?.name || tutor.assignedCenter || 'Not assigned'}
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assigned Center{(tutor.assignments || []).length > 1 ? 's' : ''}
+                  </label>
+                  {(tutor.assignments || []).length ? (
+                    <div className="space-y-2">
+                      {tutor.assignments.map((a, i) => (
+                        <div key={i} className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm flex flex-wrap justify-between gap-2">
+                          <span className="font-medium">{a.center?.name || 'Unknown center'}</span>
+                          <span className="text-gray-600">
+                            {formatSessionType(a.sessionType)} · {formatSessionTiming(a.sessionTiming)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">Not assigned</div>
+                  )}
                 </div>
 
                 {/* Subjects */}
@@ -261,7 +261,7 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
                     </div>
                   )}
 
-                  {tutor.sessionType === 'tuition' && (tutor.qualificationType === 'graduation' || tutor.qualificationType === 'intermediate') && tutor.specialization && (
+                  {hasSession('tuition') && (tutor.qualificationType === 'graduation' || tutor.qualificationType === 'intermediate') && tutor.specialization && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
                       <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
@@ -270,7 +270,7 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
                     </div>
                   )}
 
-                  {tutor.sessionType === 'tuition' && tutor.collegeName && (
+                  {hasSession('tuition') && tutor.collegeName && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">College Name</label>
                       <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">
@@ -279,7 +279,7 @@ const TutorProfile = ({ tutor, onEdit, onDelete, onClose }) => {
                     </div>
                   )}
 
-                  {tutor.sessionType === 'arabic' && tutor.madarsahName && (
+                  {hasSession('arabic') && tutor.madarsahName && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Madarsah Name</label>
                       <div className="w-full px-3 py-1.5 border border-gray-300 rounded bg-gray-50 text-sm">

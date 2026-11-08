@@ -1,20 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Popover from '../../common/Popover';
-
-// Static select data (adjust if you already import these)
-const sessionTypes = [
-  { value: 'arabic', label: 'Arabic' },
-  { value: 'tuition', label: 'Tuition' }
-];
-
-const sessionTimings = [
-  { value: 'after_fajr', label: 'Post Fajr' },
-  { value: 'after_zohar', label: 'Post Zohar' },
-  { value: 'after_asar', label: 'Post Asar' },
-  { value: 'after_maghrib', label: 'Post Maghrib' },
-  { value: 'after_isha', label: 'Post Isha' }
-];
+import CenterAssignmentsEditor from './CenterAssignmentsEditor';
+import { assignmentsForApi, emptyAssignment, idOf, validateAssignments } from '../../../utils/tutorCenters';
 
 const tuitionQualifications = [
   { value: 'graduation', label: 'Graduation' },
@@ -55,10 +43,9 @@ const initialState = {
   phone: '',
   password: '', // optional on update
   address: '',
-  assignedCenter: '', // id
+  // One entry per center, each with its own session type and timing
+  assignments: [emptyAssignment()],
   subjects: [],
-  sessionType: '',
-  sessionTiming: '',
   qualificationType: '',
   qualificationOther: '',
   qualificationStatus: '',
@@ -80,7 +67,7 @@ const initialState = {
 
 const UpdateTutorForm = ({
   onSubmit,         // async (payload) => PUT /api/tutors/:id
-  formData,         // initial tutor data (may include populated assignedCenter and students)
+  formData,         // initial tutor data (may include populated assignments and students)
   fieldErrors,      // external validation
   isSubmitting,
   tutorId,
@@ -119,8 +106,6 @@ const UpdateTutorForm = ({
   // Centers state
   const [centers, setCenters] = useState([]);
   const [centersError, setCentersError] = useState(null);
-  const [centerQuery, setCenterQuery] = useState('');
-  const [showCenterDropdown, setShowCenterDropdown] = useState(false);
 
   // Students-by-center
   const [studentsByCenter, setStudentsByCenter] = useState([]);
@@ -134,8 +119,10 @@ const UpdateTutorForm = ({
     if (!formData) return;
     const processed = { ...initialState, ...formData };
 
-    // assignedCenter may be object or id
-    processed.assignedCenter = formData.assignedCenter?._id || formData.assignedCenter || '';
+    // assignments' centers may be objects or ids
+    processed.assignments = Array.isArray(formData.assignments) && formData.assignments.length
+      ? formData.assignments.map((a) => ({ center: idOf(a.center), sessionType: a.sessionType || '', sessionTiming: a.sessionTiming || '' }))
+      : [emptyAssignment()];
 
     // subjects ensure array
     processed.subjects = Array.isArray(formData.subjects)
@@ -214,49 +201,60 @@ const UpdateTutorForm = ({
     })();
   };
 
-  // Filtered centers for search dropdown
-  const filteredCenters = useMemo(() => {
-    const q = centerQuery.toLowerCase().trim();
-    if (!q) return centers;
-    return centers.filter((c) =>
-      [c.name, c.area, c.city].filter(Boolean).some((f) => f.toLowerCase().includes(q))
-    );
-  }, [centers, centerQuery]);
+  // Qualification fields follow the first center's session type
+  const primarySessionType = localForm.assignments?.[0]?.sessionType || '';
+  const selectedCenterIds = useMemo(
+    () => (localForm.assignments || []).map((a) => idOf(a.center)).filter(Boolean),
+    [localForm.assignments]
+  );
+  const selectedCentersKey = selectedCenterIds.join(',');
 
-  // Fetch students for a center
-  const fetchStudentsForCenter = async (centerId) => {
+  // Fetch students of all the selected centers (the picker lists them together)
+  const fetchStudentsForCenters = async (centerIds) => {
     setStudentsError(null);
-    setLoadingStudents(true);
     setStudentsByCenter([]);
+    if (!centerIds.length) return;
+    setLoadingStudents(true);
     try {
       const token = (() => {
         try { return JSON.parse(localStorage.getItem('userData'))?.token || null; } catch { return null; }
       })();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/students/getByCenter/${centerId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      if (!res.ok) {
-        setStudentsError(res.status === 404 ? 'No students found for this center.' : 'Failed to fetch students.');
-        return;
-      }
-      const data = await res.json();
-      setStudentsByCenter(Array.isArray(data) ? data : []);
+      const lists = await Promise.all(centerIds.map(async (centerId) => {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/students/getByCenter/${centerId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      }));
+      setStudentsByCenter(lists.flat());
     } catch {
-      setStudentsError('Error fetching students for this center.');
+      setStudentsError('Failed to fetch students for the selected centers.');
     } finally {
       setLoadingStudents(false);
     }
   };
 
-  // Auto-load students for the existing center on first render/when center changes
+  // Auto-load students for the tutor's centers on first render/when centers change
   useEffect(() => {
-    if (localForm.assignedCenter) {
-      fetchStudentsForCenter(localForm.assignedCenter);
-    } else {
-      setStudentsByCenter([]);
-    }
+    fetchStudentsForCenters(selectedCenterIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localForm.assignedCenter]);
+  }, [selectedCentersKey]);
+
+  // When a center is removed, also unselect the students listed under it
+  const handleAssignmentsChange = (assignments) => {
+    const keep = new Set(assignments.map((a) => idOf(a.center)).filter(Boolean));
+    const removedStudentIds = new Set(
+      studentsByCenter
+        .filter((s) => !keep.has(idOf(s.assignedCenter)))
+        .map((s) => s._id || s.id)
+    );
+    setLocalForm((prev) => ({
+      ...prev,
+      assignments,
+      students: (prev.students || []).filter((id) => !removedStudentIds.has(id))
+    }));
+  };
 
   // Handlers
   const isNonEmptyString = (v) => typeof v === 'string' && v.trim().length > 0;
@@ -451,7 +449,7 @@ const UpdateTutorForm = ({
     setLocalForm((p) => ({ ...p, [name]: value }));
   };
 
-  const getQualificationOptions = () => (localForm.sessionType === 'arabic' ? arabicQualifications : tuitionQualifications);
+  const getQualificationOptions = () => (primarySessionType === 'arabic' ? arabicQualifications : tuitionQualifications);
 
   const toggleSubject = (subjectValue) => {
     const current = Array.isArray(localForm.subjects) ? [...localForm.subjects] : [];
@@ -470,7 +468,8 @@ const UpdateTutorForm = ({
   const validate = () => {
     const errs = {};
     if (!/^\d{10}$/.test(localForm.phone || '')) errs.phone = 'Valid 10-digit phone number is required.';
-    if (!localForm.assignedCenter) errs.assignedCenter = 'Assigned Center is required.';
+    const assignmentsError = validateAssignments(localForm.assignments);
+    if (assignmentsError) errs.assignments = assignmentsError;
 
     // subjects
     const subjectsArray = Array.isArray(localForm.subjects)
@@ -502,6 +501,12 @@ const UpdateTutorForm = ({
 
   const buildUpdatePayload = () => {
     const payload = { ...localForm };
+    payload.assignments = assignmentsForApi(localForm.assignments);
+    // Old single-center fields may still be on the loaded tutor; the API no longer takes them
+    delete payload.assignedCenter;
+    delete payload.sessionType;
+    delete payload.sessionTiming;
+    delete payload.centerName;
     payload.subjects = Array.isArray(payload.subjects) ? payload.subjects : (payload.subjects ? [payload.subjects] : []);
     payload.students = Array.isArray(payload.students) ? payload.students : (payload.students ? [payload.students] : []);
 
@@ -740,54 +745,12 @@ const UpdateTutorForm = ({
 
             {/* Session Information */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[400px] flex flex-col">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Session Information</h3>
+              <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Centers & Sessions</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+              {/* Assigned Centers + Students */}
+              <div className="space-y-4">
+                {/* Assigned Centers, each with its session */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Session Type <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={localForm.sessionType || ''}
-                    onChange={handleInputChange}
-                    name="sessionType"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    required
-                  >
-                    <option value="">Select Session Type</option>
-                    {sessionTypes.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Session Timing <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={localForm.sessionTiming || ''}
-                    onChange={handleInputChange}
-                    name="sessionTiming"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    required
-                  >
-                    <option value="">Select Timing</option>
-                    {sessionTimings.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Assigned Center + Students */}
-              <div className="mt-4 space-y-4">
-                {/* Assigned Center */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assigned Center <span className="text-red-600">*</span>
-                  </label>
-
                   {centersError ? (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm mb-2">
                       <span className="block">{centersError}</span>
@@ -801,43 +764,16 @@ const UpdateTutorForm = ({
                     </div>
                   ) : null}
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={centerQuery}
-                      onChange={(e) => setCenterQuery(e.target.value)}
-                      onFocus={() => setShowCenterDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowCenterDropdown(false), 200)}
-                      placeholder="Search for a center"
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    />
-                    {showCenterDropdown && (
-                      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded shadow-lg mt-1 max-h-60 overflow-auto">
-                        {filteredCenters.map((center) => (
-                          <div
-                            key={center._id}
-                            className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer"
-                            onMouseDown={() => {
-                              setLocalForm((prev) => ({ ...prev, assignedCenter: center._id, students: [] }));
-                              setCenterQuery(center.name);
-                              setShowCenterDropdown(false);
-                              fetchStudentsForCenter(center._id);
-                            }}
-                          >
-                            {center.name}{center.area ? `, ${center.area}` : ''}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {validationErrors.assignedCenter && (
-                    <div className="text-red-500 text-sm mt-1">{validationErrors.assignedCenter}</div>
-                  )}
+                  <CenterAssignmentsEditor
+                    value={localForm.assignments}
+                    onChange={handleAssignmentsChange}
+                    centers={centers}
+                    error={validationErrors.assignments}
+                  />
                 </div>
 
-                {/* Students for selected center */}
-                {localForm.assignedCenter ? (
+                {/* Students for the selected centers */}
+                {selectedCenterIds.length ? (
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-lg font-semibold text-gray-800">Students</h3>
@@ -897,6 +833,9 @@ const UpdateTutorForm = ({
                                       <span className="ml-2 text-sm text-gray-700">
                                         <span className="font-mono text-gray-500 mr-1">{index + 1}.</span>
                                         {s.name}
+                                        {selectedCenterIds.length > 1 && s.assignedCenter?.name && (
+                                          <span className="text-gray-400"> ({s.assignedCenter.name})</span>
+                                        )}
                                       </span>
                                     </label>
                                   );
@@ -948,7 +887,7 @@ const UpdateTutorForm = ({
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm min-h-[280px] flex flex-col">
               <h3 className="text-lg font-semibold text-blue-800 mb-3 pb-2 border-b border-blue-200">Educational Details</h3>
 
-              {localForm.sessionType ? (
+              {primarySessionType ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -962,7 +901,7 @@ const UpdateTutorForm = ({
                       required
                     >
                       <option value="">Select Qualification</option>
-                      {(localForm.sessionType === 'tuition' ? tuitionQualifications : arabicQualifications).map((q) => (
+                      {(primarySessionType === 'tuition' ? tuitionQualifications : arabicQualifications).map((q) => (
                         <option key={q.value} value={q.value}>{q.label}</option>
                       ))}
                     </select>
@@ -1027,7 +966,7 @@ const UpdateTutorForm = ({
                     )}
                   </div>
 
-                  {(localForm.sessionType === 'tuition' && (localForm.qualificationType === 'graduation' || localForm.qualificationType === 'intermediate')) && (
+                  {(primarySessionType === 'tuition' && (localForm.qualificationType === 'graduation' || localForm.qualificationType === 'intermediate')) && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Specialization <span className="text-red-600">*</span>
@@ -1049,7 +988,7 @@ const UpdateTutorForm = ({
                     </div>
                   )}
 
-                  {localForm.sessionType === 'tuition' && (
+                  {primarySessionType === 'tuition' && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         College Name <span className="text-red-600">*</span>
@@ -1071,7 +1010,7 @@ const UpdateTutorForm = ({
                     </div>
                   )}
 
-                  {localForm.sessionType === 'arabic' && (
+                  {primarySessionType === 'arabic' && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Madarsah Name <span className="text-red-600">*</span>
@@ -1095,7 +1034,7 @@ const UpdateTutorForm = ({
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p>Please select a session type first to configure educational details.</p>
+                  <p>Please select the session type of the first center to configure educational details.</p>
                 </div>
               )}
             </div>

@@ -7,6 +7,7 @@ import TutorList from './tutors/TutorList';
 import Popover from '../common/Popover';
 import useGet from '../CustomHooks/useGet';
 import { hasWritePermission } from '../../utils/permissions';
+import { assignmentsKey, tutorCenterNames, sessionTypeLabel, sessionTimingLabel } from '../../utils/tutorCenters';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
@@ -246,8 +247,12 @@ const TutorManagement = () => {
       const updatedFields = [];
       try {
         const comparableFields = [
-          'name','email','phone','address','qualificationType','qualificationOther','qualificationStatus','yearOfCompletion','madarsahName','collegeName','specialization','assignedCenter','subjects','sessionType','sessionTiming','assignedHadiyaAmount','aadharNumber','bankName','bankBranch','accountNumber','ifscCode','status'
+          'name','email','phone','address','qualificationType','qualificationOther','qualificationStatus','yearOfCompletion','madarsahName','collegeName','specialization','subjects','assignedHadiyaAmount','aadharNumber','bankName','bankBranch','accountNumber','ifscCode','status'
         ];
+        // Old assignments have populated centers, so compare by center id + session
+        if (updatedData.assignments && assignmentsKey(updatedData.assignments) !== assignmentsKey(selectedTutor.assignments)) {
+          updatedFields.push('assignments');
+        }
         comparableFields.forEach((key) => {
           const newVal = updatedData[key];
           const oldVal = selectedTutor[key];
@@ -468,10 +473,10 @@ const TutorManagement = () => {
       tutor.madarsahName || '',
       tutor.collegeName || '',
       tutor.specialization || '',
-      tutor.assignedCenter?.name || '',
+      tutorCenterNames(tutor, '').replace(/, /g, '; '),
       Array.isArray(tutor.subjects) ? tutor.subjects.join('; ') : (tutor.subjects || ''),
-      tutor.sessionType || '',
-      tutor.sessionTiming || '',
+      (tutor.assignments || []).map(a => sessionTypeLabel(a.sessionType)).join('; '),
+      (tutor.assignments || []).map(a => sessionTimingLabel(a.sessionTiming)).join('; '),
       tutor.assignedHadiyaAmount || '',
       tutor.aadharNumber || '',
       tutor.bankName || '',
