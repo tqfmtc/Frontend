@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 import useGet from '../CustomHooks/useGet';
+import { tutorCenters, tutorCenterNames } from '../../utils/tutorCenters';
 
 const Tutors = () => {
   const { response: tutors, loading, error } = useGet('/tutors');
@@ -10,7 +11,7 @@ const Tutors = () => {
   const filteredTutors = tutors?.filter(tutor => {
     const matchesName = tutor.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesEmail = tutor.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCenter = tutor.assignedCenter?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCenter = tutorCenterNames(tutor, '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesName || matchesEmail || matchesCenter;
   }) || [];
 
@@ -95,7 +96,7 @@ const Tutors = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {tutor.assignedCenter?.name || 'Not assigned'}
+                      {tutorCenterNames(tutor)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -139,7 +140,7 @@ const Tutors = () => {
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">Center</p>
-                <p className="font-medium">{selectedTutor.assignedCenter?.name || 'Not assigned'}</p>
+                <p className="font-medium">{tutorCenterNames(selectedTutor)}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">Status</p>
@@ -148,12 +149,16 @@ const Tutors = () => {
             </div>
 
             {/* Additional Information */}
-            {selectedTutor.assignedCenter && (
+            {tutorCenters(selectedTutor).length > 0 && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Center Details</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="font-medium">{selectedTutor.assignedCenter.name}</p>
-                  <p className="text-sm text-gray-500">{selectedTutor.assignedCenter.area}</p>
+                <div className="space-y-2">
+                  {tutorCenters(selectedTutor).map((center) => (
+                    <div key={center._id} className="bg-gray-50 p-4 rounded-lg">
+                      <p className="font-medium">{center.name}</p>
+                      <p className="text-sm text-gray-500">{center.area}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

@@ -266,7 +266,9 @@ const ReportManagement = () => {
       
       if (!res.ok) throw new Error('Failed to load coordinates');
       const data = await res.json();
-      const points = (data?.[0]?.points) || [];
+      // One entry per tutor per center: show the clicked row's center
+      const row = (data || []).find(r => String(r.center?._id) === String(report.center?._id)) || data?.[0];
+      const points = row?.points || [];
       setMapPoints(points);
     } catch (e) {
       toast.error(e.message || 'Failed to open map');
@@ -826,7 +828,7 @@ const ReportManagement = () => {
                     calcAttendanceStats(report);
 
                   return (
-                    <tr key={report.tutor._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openMapForTutor(report)}>
+                    <tr key={`${report.tutor._id}:${report.center?._id ?? ''}`} className="hover:bg-gray-50 cursor-pointer" onClick={() => openMapForTutor(report)}>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {report.tutor.name}

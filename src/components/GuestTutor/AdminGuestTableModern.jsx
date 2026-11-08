@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FiCheck, FiSearch, FiX, FiInfo } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { hasWritePermission } from '../../utils/permissions';
+import { tutorCenterNames } from '../../utils/tutorCenters';
 
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
@@ -204,7 +205,7 @@ console.log(paginated)
                   <td className="px-4 py-3 font-medium text-gray-900">{req.guest.name}</td>
                   <td className="px-4 py-3 text-gray-800">{req.guest.qualification}</td>
                   <td className="px-4 py-3 text-gray-800">{req.tutor?.name}</td>
-                  <td className="px-4 py-3 text-gray-800">{req.tutor?.assignedCenter?.name || '-'}</td>
+                  <td className="px-4 py-3 text-gray-800">{tutorCenterNames(req.tutor, '-')}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -304,7 +305,7 @@ console.log(paginated)
             <h3 className="text-xl font-semibold mb-3">{selected.guest.name}</h3>
             <div className="text-sm space-y-1">
               <p>
-                <strong>Center:</strong> {selected.tutor?.assignedCenter?.name || '-'}
+                <strong>Center:</strong> {tutorCenterNames(selected.tutor, '-')}
               </p>
               <p>
                 <strong>Guest Phone:</strong> {selected.guest.phone}

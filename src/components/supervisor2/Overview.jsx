@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
+import { tutorCenterIds } from '../../utils/tutorCenters';
 
 const Overview = () => {
   const { response: centers, loading: centersLoading } = useGet('/centers');
@@ -35,7 +36,8 @@ const Overview = () => {
 
   const assignedCentersIds = JSON.parse(localStorage.getItem('userData'))?.assignedCenters || [];
   const assignedCenters = centers?.filter(center => assignedCentersIds.includes(center._id));
-  const assignedTutors = tutors?.filter(tutor => assignedCentersIds.includes(tutor.assignedCenter._id));
+  // A tutor counts if any of their centers is one of the supervisor's
+  const assignedTutors = tutors?.filter(tutor => tutorCenterIds(tutor).some(id => assignedCentersIds.includes(id)));
   const assignedStudents = students?.filter(students => assignedCentersIds.includes(students.assignedCenter._id));
 
   // Filter assigned centers based on filters
