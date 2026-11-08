@@ -30,7 +30,9 @@ const GuestLogin = () => {
                     name: result.name,
                     tutorId: result.tutorId,
                     centerCoordinates: result.centerCoordinates,
-                    centerId: result.centerId
+                    centerId: result.centerId,
+                    // All of the tutor's centers; the guest can cover any of them
+                    centers: result.centers || []
                 };
                 localStorage.setItem('guestData', JSON.stringify(guestData));
                 localStorage.setItem('token', result.token); 

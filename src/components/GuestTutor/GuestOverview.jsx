@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -83,10 +83,12 @@ const GuestOverview = () => {
   const [attendanceMarked, setAttendanceMarked] = useState(false);
   const [error, setError] = useState(null);
   const [locating, setLocating] = useState(false);
-  const centerLocation = guestData.centerCoordinates ? {
-    lat: parseFloat(guestData.centerCoordinates[0]),
-    lng: parseFloat(guestData.centerCoordinates[1])
-  } : null;
+  // The tutor's centers (guest logins saved before multi-center only have centerCoordinates)
+  const centerLocations = (guestData.centers?.length
+    ? guestData.centers.map(c => c.coordinates)
+    : [guestData.centerCoordinates]
+  ).filter(c => Array.isArray(c) && c.length === 2)
+    .map(c => ({ lat: parseFloat(c[0]), lng: parseFloat(c[1]) }));
 
   const calculateDistance = (loc1, loc2) => {
     const R = 6371e3; // metres
@@ -101,11 +103,18 @@ const GuestOverview = () => {
     return R * c; // in metres
   };
 
+  // Attendance counts for the nearest center (the server picks it the same way)
+  const nearestCenter = (loc) => (loc && centerLocations.length)
+    ? centerLocations.reduce((best, c) => calculateDistance(loc, c) < calculateDistance(loc, best) ? c : best)
+    : centerLocations[0];
+  const centerLocation = nearestCenter(currentLocation) || null;
+
   const handleLocationUpdate = (loc) => {
     setError(null);
     setCurrentLocation(loc);
-    if (centerLocation) {
-      const distance = calculateDistance(loc, centerLocation);
+    const nearest = nearestCenter(loc);
+    if (nearest) {
+      const distance = calculateDistance(loc, nearest);
       setLocationMatch(distance <= 50);
     }
   };
@@ -156,8 +165,12 @@ const GuestOverview = () => {
         <MapContainer center={[centerLocation.lat, centerLocation.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <LocationMarker onLocationUpdate={handleLocationUpdate} onError={(msg)=>setError(msg)} />
-          <Marker position={[centerLocation.lat, centerLocation.lng]} icon={blueIcon} />
-          <Circle center={[centerLocation.lat, centerLocation.lng]} radius={50} pathOptions={{ color: '#4F46E5', fillOpacity: 0.1 }} />
+          {centerLocations.map((c, i) => (
+            <Fragment key={i}>
+              <Marker position={[c.lat, c.lng]} icon={blueIcon} />
+              <Circle center={[c.lat, c.lng]} radius={50} pathOptions={{ color: '#4F46E5', fillOpacity: 0.1 }} />
+            </Fragment>
+          ))}
         </MapContainer>
       </div>
       <button onClick={handleMarkAttendance} disabled={!locationMatch || attendanceMarked} className={`px-6 py-3 rounded-lg text-white font-medium ${locationMatch && !attendanceMarked ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}>Mark Attendance</button>
