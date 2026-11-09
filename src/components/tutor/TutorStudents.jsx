@@ -100,6 +100,7 @@ const TutorStudents = () => {
   const tableRef = useRef(null)
   const paginationRef = useRef(null)
   const [selectedClass, setSelectedClass] = useState('all')
+  const [selectedCenter, setSelectedCenter] = useState('all') // only used when the tutor has several centers
   const [editMode, setEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -187,7 +188,7 @@ const TutorStudents = () => {
   // Reset to first page whenever filters/search or data changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedClass, students]);
+  }, [searchTerm, selectedClass, selectedCenter, students]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -582,8 +583,14 @@ const TutorStudents = () => {
       selectedClass === 'all' || 
       (selectedClass === 'non-school' && !classValue) ||
       classValue === selectedClass;
-    return matchesSearch && matchesClass
+    const matchesCenter = selectedCenter === 'all' || centerIdOf(student.assignedCenter) === selectedCenter
+    return matchesSearch && matchesClass && matchesCenter
   }) || []
+
+  // Several centers: show which center each student belongs to
+  const showCenters = myCenters.length > 1
+  const centerNameOf = (student) =>
+    student.assignedCenter?.name || myCenters.find(c => centerIdOf(c) === centerIdOf(student.assignedCenter))?.name || '-'
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -976,6 +983,21 @@ const TutorStudents = () => {
               />
             </div>
 
+            {/* Center Filter Dropdown (tutors with several centers) */}
+            {showCenters && (
+              <div className="w-full">
+                <CustomDropdown
+                  value={selectedCenter}
+                  onChange={setSelectedCenter}
+                  options={[
+                    { value: 'all', label: 'All Centers' },
+                    ...myCenters.map(c => ({ value: centerIdOf(c), label: c.name || centerIdOf(c) }))
+                  ]}
+                  className="w-full"
+                />
+              </div>
+            )}
+
             {/* Class Filter Dropdown */}
             <div className="w-full">
               <CustomDropdown
@@ -1021,6 +1043,11 @@ const TutorStudents = () => {
                   <th className="px-2 py-3 sm:px-4 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Father's Name
                   </th>
+                  {showCenters && (
+                    <th className="px-2 py-3 sm:px-4 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Center
+                    </th>
+                  )}
                   <th className="px-2 py-3 sm:px-4 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Class
                   </th>
@@ -1048,6 +1075,11 @@ const TutorStudents = () => {
                   <td className="px-2 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-500">{student.fatherName}</div>
                   </td>
+                  {showCenters && (
+                    <td className="px-2 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-center">
+                      <div className="text-sm text-gray-900">{centerNameOf(student)}</div>
+                    </td>
+                  )}
                   <td className="px-2 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900">{student.schoolInfo?.class || '-'}</div>
                   </td>
@@ -1105,6 +1137,9 @@ const TutorStudents = () => {
                 <div>
                   <h3 className="text-base font-semibold text-gray-800">{student.name}</h3>
                   <p className="text-sm text-gray-500">{student.fatherName}</p>
+                  {showCenters && (
+                    <p className="text-sm font-medium text-blue-700">{centerNameOf(student)}</p>
+                  )}
                   <p className="text-sm text-gray-500">
                     {student.schoolInfo?.class || '-'} | {student.schoolInfo?.name || '-'}
                   </p>
